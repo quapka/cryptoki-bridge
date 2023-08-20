@@ -9,9 +9,6 @@ jobs:
   pkcs11-build-and-test:
     name: PKCS#11 build & test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./pkcs11
     steps:
       - uses: actions/checkout@v3
       - name: Update submodules
