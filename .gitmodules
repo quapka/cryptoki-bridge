@@ -1,6 +1,6 @@
-[submodule "pkcs11/PKCS11-SPECS"]
-	path = pkcs11/PKCS11-SPECS
+[submodule "PKCS11-SPECS"]
+	path = PKCS11-SPECS
 	url = https://github.com/Pkcs11Interop/PKCS11-SPECS.git
-[submodule "softfido"]
-	path = pkcs11/integration-tests/softfido
+[submodule "integration-tests/softfido"]
+	path = integration-tests/softfido
 	url = https://github.com/KristianMika/softfido.git
