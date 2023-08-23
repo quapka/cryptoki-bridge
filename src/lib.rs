@@ -1,6 +1,7 @@
 extern crate libc;
 
 pub(crate) mod communicator;
+pub(crate) mod configuration_provider;
 pub mod cryptoki;
 pub(crate) mod state;
 
