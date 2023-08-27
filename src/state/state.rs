@@ -5,7 +5,7 @@ use crate::{
     },
     configuration_provider::{
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
-        root_configuration::RootConfiguration,
+        root_configuration::RootConfiguration, ConfigurationProvider,
     },
     cryptoki::bindings::{CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
 };
@@ -135,19 +135,22 @@ impl CryptokiState {
 impl Default for CryptokiState {
     // TODO: just tmp, remove later, pls don't look
     fn default() -> Self {
-        let cert = Certificate::from_pem(
-            std::fs::read("/home/kiko/Desktop/tmp/meesign-server/keys/meesign-ca-cert.pem")
-                .unwrap(),
-        );
-        let runtime = Runtime::new().unwrap();
-        let meesign = runtime.block_on(async move {
-            Meesign::new("meesign.local".into(), 1337, cert)
-                .await
-                .unwrap()
-        });
         let configuration = RootConfiguration::new()
             .add_provider(Box::new(ControllerConfiguration::new()))
             .add_provider(Box::new(EnvConfiguration::new()));
+        let certificate_path = configuration
+            .get_communicator_certificate_path()
+            .unwrap()
+            .expect("Couldn't get meesign CA certificate path");
+        let cert = Certificate::from_pem(std::fs::read(certificate_path).unwrap());
+        let runtime = Runtime::new().unwrap();
+        let hostname = configuration
+            .get_communicator_url()
+            .unwrap()
+            .expect("Coudln't get communicator URL");
+        let meesign =
+            runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
+
         Self::new(Box::new(meesign), runtime, configuration)
     }
 }
