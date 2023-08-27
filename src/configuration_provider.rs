@@ -3,6 +3,7 @@ use crate::communicator::GroupId;
 use self::configuration_provider_error::ConfigurationProviderError;
 
 mod configuration_provider_error;
+mod controller_configuration;
 mod env_configuration;
 
 pub(crate) trait ConfigurationProvider {

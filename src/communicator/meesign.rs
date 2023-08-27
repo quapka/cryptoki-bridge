@@ -50,7 +50,7 @@ impl Communicator for Meesign {
         let groups = &response.get_ref().groups;
         let groups = groups
             .iter()
-            .filter(|group| group.key_type == KeyType::SignChallenge.into())
+            .filter(|group| group.key_type == KeyType::SignChallenge as i32)
             .map(|group| Group::new(group.identifier.clone().into(), group.name.clone().into()))
             .collect();
         Ok(groups)
