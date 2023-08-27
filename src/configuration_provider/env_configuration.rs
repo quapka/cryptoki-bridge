@@ -8,7 +8,7 @@ static COMMUNICATOR_URL_ENV_NAME: &str = "COMMUNICATOR_URL";
 static GROUP_ID_ENV_NAME: &str = "GROUP_ID";
 static COMMUNICATOR_CERTIFICATE_PATH_ENV_NAME: &str = "COMMUNICATOR_CERTIFICATE_PATH";
 
-struct EnvConfiguration {}
+pub(crate) struct EnvConfiguration {}
 
 impl EnvConfiguration {
     pub(crate) fn new() -> Self {

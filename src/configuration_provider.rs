@@ -3,11 +3,11 @@ use crate::communicator::GroupId;
 use self::configuration_provider_error::ConfigurationProviderError;
 
 mod configuration_provider_error;
-mod controller_configuration;
-mod env_configuration;
-mod root_configuration;
+pub(crate) mod controller_configuration;
+pub(crate) mod env_configuration;
+pub(crate) mod root_configuration;
 
-pub(crate) trait ConfigurationProvider {
+pub(crate) trait ConfigurationProvider: Send + Sync {
     fn get_communicator_url(&self) -> Result<Option<String>, ConfigurationProviderError>;
 
     fn get_group_id(&self) -> Result<Option<GroupId>, ConfigurationProviderError>;

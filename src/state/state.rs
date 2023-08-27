@@ -3,6 +3,10 @@ use crate::{
         communicator_error::CommunicatorError, group::Group, meesign::Meesign, AuthResponse,
         Communicator, GroupId, RequestData, TaskId,
     },
+    configuration_provider::{
+        controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
+        root_configuration::RootConfiguration,
+    },
     cryptoki::bindings::{CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
 };
 use std::sync::{RwLockReadGuard, RwLockWriteGuard};
@@ -19,6 +23,7 @@ pub(crate) struct CryptokiState {
     communicator: Box<dyn Communicator>,
     runtime: Runtime,
     slots: Slots,
+    configuration: RootConfiguration,
 }
 
 impl CryptokiState {
@@ -107,12 +112,17 @@ impl CryptokiState {
         self.slots.get_token_info(slot_id)
     }
 
-    pub(crate) fn new(communicator: Box<dyn Communicator>, runtime: Runtime) -> Self {
+    pub(crate) fn new(
+        communicator: Box<dyn Communicator>,
+        runtime: Runtime,
+        configuration: RootConfiguration,
+    ) -> Self {
         Self {
             sessions: Default::default(),
             communicator,
             runtime,
             slots: Slots::new(),
+            configuration,
         }
     }
 
@@ -135,7 +145,10 @@ impl Default for CryptokiState {
                 .await
                 .unwrap()
         });
-        Self::new(Box::new(meesign), runtime)
+        let configuration = RootConfiguration::new()
+            .add_provider(Box::new(ControllerConfiguration::new()))
+            .add_provider(Box::new(EnvConfiguration::new()));
+        Self::new(Box::new(meesign), runtime, configuration)
     }
 }
 
@@ -146,6 +159,9 @@ impl Default for CryptokiState {
 
         let runtime = Runtime::new().unwrap();
         let meesign = MockedMeesign::new("testgrp".into());
-        Self::new(Box::new(meesign), runtime)
+        let configuration = RootConfiguration::new()
+            .add_provider(Box::new(ControllerConfiguration::new()))
+            .add_provider(Box::new(EnvConfiguration::new()));
+        Self::new(Box::new(meesign), runtime, configuration)
     }
 }

@@ -15,7 +15,7 @@ pub(crate) struct InterfaceConfiguration {
 }
 
 impl ControllerConfiguration {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {}
     }
 
