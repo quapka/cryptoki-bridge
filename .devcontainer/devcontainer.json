@@ -1,0 +1,21 @@
+{
+    "name": "Rust Box",
+    "runArgs": [
+        // "--privileged",
+        // "--network=host"
+    ],
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": {}
+    },
+    "settings": {},
+    "extensions": [
+        "rust-lang.rust-analyzer",
+        "serayuzgur.crates",
+        "usernamehw.errorlens"
+    ],
+    "mounts": [
+        // "source=/lib/modules,target=/lib/modules,type=bind,consistency=cached"
+    ],
+    "remoteUser": "dev"
+}
