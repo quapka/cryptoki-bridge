@@ -2,7 +2,10 @@ use std::iter::repeat;
 
 use crate::{
     communicator::{group::Group, GroupId},
-    cryptoki::bindings::{CK_CHAR, CK_SLOT_INFO, CK_TOKEN_INFO, CK_VERSION},
+    cryptoki::bindings::{
+        CKF_TOKEN_INITIALIZED, CKF_TOKEN_PRESENT, CK_CHAR, CK_FLAGS, CK_SLOT_INFO, CK_TOKEN_INFO,
+        CK_VERSION,
+    },
 };
 
 static LABEL_PREFIX: &str = "Meesign: ";
@@ -32,7 +35,7 @@ impl Token for MeesignToken {
             manufacturerID: Default::default(),
             model: Default::default(),
             serialNumber: Default::default(),
-            flags: Default::default(),
+            flags: self.get_flags(),
             ulMaxSessionCount: 2,
             ulSessionCount: 1, // TODO
             ulMaxRwSessionCount: 2,
@@ -54,7 +57,7 @@ impl Token for MeesignToken {
         CK_SLOT_INFO {
             slotDescription: self.create_slot_description(),
             manufacturerID: Default::default(),
-            flags: Default::default(),
+            flags: CKF_TOKEN_PRESENT as CK_FLAGS,
             hardwareVersion: version,
             firmwareVersion: version,
         }
@@ -100,6 +103,10 @@ impl MeesignToken {
     // TODO
     fn get_utc_time() -> [CK_CHAR; 16usize] {
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
+
+    fn get_flags(&self) -> CK_FLAGS {
+        (CKF_TOKEN_PRESENT | CKF_TOKEN_INITIALIZED) as CK_FLAGS
     }
 }
 
