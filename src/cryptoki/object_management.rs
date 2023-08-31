@@ -131,28 +131,26 @@ pub extern "C" fn C_GetAttributeValue(
         .into_iter()
         .map(|attribute| attribute.into())
         .collect();
-    // todo: implement for all attrs
-    if template.len() != 1 {
-        return CKR_ATTRIBUTE_TYPE_INVALID as CK_RV;
-    }
-    // todo: implement behaviour by spec (5 options)
-    let Some(attribute) = object.value.read().unwrap().get_attribute(template[0].get_attribute_type()) else {
-        return CKR_ATTRIBUTE_TYPE_INVALID as CK_RV;
-    };
 
-    if unsafe { (*pTemplate).pValue.is_null() } {
-        unsafe { (*pTemplate).ulValueLen = attribute.len() as u64 }
-        return CKR_OK as CK_RV;
-    }
+    for i in 0..(ulCount as isize) {
+        // todo: implement behaviour by spec (5 options)
+        let Some(attribute) = object.value.read().unwrap().get_attribute(template[i as usize].get_attribute_type()) else {
+            return CKR_ATTRIBUTE_TYPE_INVALID as CK_RV;
+        };
 
-    unsafe {
-        ptr::copy(
-            attribute.as_ptr(),
-            (*pTemplate).pValue as *mut u8,
-            attribute.len(),
-        );
-        (*pTemplate).ulValueLen = attribute.len() as u64
-    };
+        if unsafe { (*pTemplate.offset(i)).pValue.is_null() } {
+            unsafe { (*pTemplate.offset(i)).ulValueLen = attribute.len() as u64 }
+            continue;
+        }
+        unsafe {
+            ptr::copy(
+                attribute.as_ptr(),
+                (*pTemplate.offset(i)).pValue as *mut u8,
+                attribute.len(),
+            );
+            (*pTemplate.offset(i)).ulValueLen = attribute.len() as u64
+        };
+    }
 
     CKR_OK as CK_RV
 }
