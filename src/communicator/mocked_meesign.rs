@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
 use super::{
     communicator_error::CommunicatorError, AuthResponse, ByteVector, Communicator, Group, GroupId,
     RequestData, TaskId,
 };
+use aes::cipher::generic_array::GenericArray;
 use p256::ecdsa::{signature::hazmat::PrehashSigner, SigningKey, VerifyingKey};
 use rand::rngs::OsRng;
 use tonic::async_trait;
@@ -17,7 +20,14 @@ pub(crate) struct MockedMeesign {
 
 impl MockedMeesign {
     pub(crate) fn new(group_name: String) -> Self {
-        let private_key = SigningKey::random(&mut OsRng);
+        // let private_key = SigningKey::random(&mut OsRng); TODO: generate and store to db, when db
+        // note: this temporary solution is behind a test feature flag and it never gets into the final binary
+
+        let private_key = SigningKey::from_bytes(&GenericArray::clone_from_slice(
+            &hex::decode("4240f6938ad911b47a56bed000483410a83d2e0e7f0b669d022ee2b2aca68470")
+                .unwrap(),
+        ))
+        .unwrap();
         let verifying_key = VerifyingKey::from(&private_key);
         let group_public_key = verifying_key.to_encoded_point(false).as_bytes().into();
         Self {
