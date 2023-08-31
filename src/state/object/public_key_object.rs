@@ -1,9 +1,11 @@
-use crate::cryptoki::bindings::{CKA_EC_POINT, CK_ATTRIBUTE_TYPE};
+use crate::cryptoki::bindings::{
+    CKA_EC_PARAMS, CKA_EC_POINT, CKA_ID, CKA_KEY_TYPE, CKA_LABEL, CKK_ECDSA, CK_ATTRIBUTE_TYPE,
+};
 
 use super::{cryptoki_object::CryptokiObject, object_class::ObjectClass, template::Template};
 
 const DER_OCTET_STRING_TAG: u8 = 0x04;
-
+const NIST_P256_EC_PARAMS_DER_HEX: &str = "06082a8648ce3d030107";
 pub(crate) struct PublicKeyObject {
     data: Vec<u8>,
 }
@@ -44,6 +46,21 @@ impl CryptokiObject for PublicKeyObject {
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
         // todo implement
+        if attribute_type == CKA_KEY_TYPE as u64 {
+            return Some(CKK_ECDSA.to_le_bytes().into());
+        }
+        if attribute_type == CKA_LABEL as u64 {
+            return Some("meesign".as_bytes().into());
+        }
+
+        if attribute_type == CKA_ID as u64 {
+            return Some("".as_bytes().into());
+        }
+
+        if attribute_type == CKA_EC_PARAMS as u64 {
+            return Some(hex::decode(NIST_P256_EC_PARAMS_DER_HEX).unwrap());
+        }
+
         if attribute_type != CKA_EC_POINT as u64 {
             return None;
         }
