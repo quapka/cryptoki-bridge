@@ -1,4 +1,4 @@
-use crate::cryptoki::bindings::CK_ATTRIBUTE_TYPE;
+use crate::cryptoki::bindings::{CKA_ALWAYS_AUTHENTICATE, CK_ATTRIBUTE_TYPE, CK_FALSE};
 
 use super::{cryptoki_object::CryptokiObject, object_class::ObjectClass, template::Template};
 
@@ -33,7 +33,10 @@ impl CryptokiObject for PrivateKeyObject {
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
-        None // todo
+        if attribute_type == CKA_ALWAYS_AUTHENTICATE as u64 {
+            return Some(CK_FALSE.to_le_bytes().into());
+        }
+        None
     }
 
     fn get_data(&self) -> Vec<u8> {
