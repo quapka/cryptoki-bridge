@@ -1,14 +1,21 @@
-use std::{collections::HashMap, vec::IntoIter};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    vec::IntoIter,
+};
 
 use aes::Aes128;
 use openssl::hash::Hasher;
 use rand::{rngs::OsRng, Rng};
 
 use crate::{
-    communicator::{AuthResponse, TaskId},
+    communicator::{AuthResponse, GroupId, TaskId},
     cryptoki::bindings::CK_OBJECT_HANDLE,
     state::{
-        object::{cryptoki_object::CryptokiArc, object_search::ObjectSearch},
+        object::{
+            cryptoki_object::CryptokiArc, object_search::ObjectSearch,
+            private_key_object::PrivateKeyObject, public_key_object::PublicKeyObject,
+        },
         slots::TokenStore,
     },
 };
@@ -30,6 +37,8 @@ pub(crate) struct Session {
     encryptor: Option<Aes128>,
 
     signer: Option<Signer>,
+
+    key_pair: Option<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE)>,
 }
 
 #[derive(Clone)]
@@ -49,7 +58,9 @@ impl Signer {
 }
 impl Session {
     pub(crate) fn new(token: TokenStore) -> Self {
-        Self {
+        // TODO: refactor
+        let pubkey: GroupId = token.read().unwrap().get_public_key().into();
+        let mut session = Self {
             hasher: None,
             object_search: None,
             objects: Default::default(),
@@ -57,7 +68,14 @@ impl Session {
             encryptor: None,
             signer: None,
             object_search_iterator: None,
-        }
+            key_pair: None,
+        };
+
+        session.key_pair = Some(session.create_communicator_keypair(pubkey));
+        session
+    }
+    pub fn get_keypair(&self) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
+        self.key_pair.unwrap()
     }
     pub fn get_hasher_mut(&mut self) -> Option<&mut Hasher> {
         self.hasher.as_mut()
@@ -181,5 +199,20 @@ impl Session {
             return None;
         };
         signer.task_id.clone()
+    }
+
+    pub fn create_communicator_keypair(
+        &mut self,
+        pubkey: GroupId,
+    ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
+        let pubkey_object = PublicKeyObject::new(pubkey.clone());
+        let pubkey_handle = self.create_object(CryptokiArc {
+            value: Arc::new(RwLock::new(pubkey_object)),
+        });
+        let private_key = PrivateKeyObject::new(pubkey);
+        let private_key_handle = self.create_object(CryptokiArc {
+            value: Arc::new(RwLock::new(private_key)),
+        });
+        (private_key_handle, pubkey_handle)
     }
 }

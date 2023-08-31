@@ -5,7 +5,9 @@ use std::{
 
 use rand::{rngs::OsRng, Rng};
 
-use crate::{cryptoki::bindings::CK_SESSION_HANDLE, state::slots::TokenStore};
+use crate::{
+    communicator::GroupId, cryptoki::bindings::CK_SESSION_HANDLE, state::slots::TokenStore,
+};
 
 use super::session::Session;
 
@@ -21,7 +23,6 @@ impl Sessions {
 
     pub(crate) fn create_session(&mut self, token: TokenStore) -> CK_SESSION_HANDLE {
         let new_session_state = RwLock::new(Session::new(token));
-
         let mut session_handle = self.generate_session_handle();
         while self.sessions.contains_key(&session_handle) {
             session_handle = self.generate_session_handle();

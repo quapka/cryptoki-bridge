@@ -39,6 +39,7 @@ pub extern "C" fn C_GetSlotList(
     };
 
     let groups = state.get_groups_blocking().unwrap();
+
     let slot_length = groups.len();
 
     if pSlotList.is_null() {

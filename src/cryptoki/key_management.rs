@@ -7,8 +7,10 @@ use rand::{rngs::OsRng, Rng};
 
 use crate::{
     state::object::{
-        cryptoki_object::CryptokiArc, private_key_object::PrivateKeyObject,
-        public_key_object::PublicKeyObject, template::Template,
+        cryptoki_object::CryptokiArc,
+        private_key_object::PrivateKeyObject,
+        public_key_object::{self, PublicKeyObject},
+        template::Template,
     },
     STATE,
 };
@@ -102,28 +104,20 @@ pub extern "C" fn C_GenerateKeyPair(
     phPublicKey: CK_OBJECT_HANDLE_PTR,
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(state) = STATE.read() else  {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_ref() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(mut session) = state.get_session_mut(&hSession) else{
+    let Some(session) = state.get_session(&hSession) else{
        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
-    let token = session.get_token();
-    let token = token.read().unwrap();
-    let pubkey = token.get_public_key();
-    let pubkey_object = PublicKeyObject::new(pubkey.into());
-    let pubkey_handle = session.create_object(CryptokiArc {
-        value: Arc::new(RwLock::new(pubkey_object)),
-    });
+    let (private_key_handle, pubkey_handle) = session.get_keypair();
+
     unsafe { *phPublicKey = pubkey_handle };
-    let private_key = PrivateKeyObject::new(pubkey.into());
-    let private_key_handle = session.create_object(CryptokiArc {
-        value: Arc::new(RwLock::new(private_key)),
-    });
+
     unsafe { *phPrivateKey = private_key_handle };
 
     CKR_OK as CK_RV

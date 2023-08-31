@@ -61,11 +61,10 @@ impl CryptokiObject for PublicKeyObject {
             return Some(hex::decode(NIST_P256_EC_PARAMS_DER_HEX).unwrap());
         }
 
-        if attribute_type != CKA_EC_POINT as u64 {
-            return None;
+        if attribute_type == CKA_EC_POINT as u64 {
+            return Some(self.format_public_key());
         }
-
-        Some(self.format_public_key())
+        None
     }
 
     fn get_data(&self) -> Vec<u8> {
