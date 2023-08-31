@@ -45,6 +45,7 @@ jobs:
     env:
       PKCS11SPY_OUTPUT: "pkcs11spy.log"
       PKCS11SPY: "./libmeesign_pkcs11.so"
+      PKCS11SPY_LIB: "/usr/lib/x86_64-linux-gnu/pkcs11-spy.so"
     steps:
       - name: Download cryptoki library file
         uses: actions/download-artifact@v3
@@ -55,11 +56,11 @@ jobs:
       - name: Install test tooling
         run: sudo apt-get update && sudo apt-get install --assume-yes openssh-client openssh-server opensc
       - name: set authorized keys
-        run: mkdir ~/.ssh/ && ssh-keygen -D /usr/lib/x86_64-linux-gnu/pkcs11-spy.so -e > ~/.ssh/authorized_keys
+        run: mkdir ~/.ssh/ && ssh-keygen -D $PKCS11SPY_LIB -e > ~/.ssh/authorized_keys
       - name: start ssh server
         run: sudo service ssh start
       - name: Authenticate against localhost
-        run: ssh -o StrictHostKeyChecking=no -vvvv -I /usr/lib/x86_64-linux-gnu/pkcs11-spy.so $(whoami)@localhost ls
+        run: ssh -o StrictHostKeyChecking=no -vvvv -I $PKCS11SPY_LIB $(whoami)@localhost exit
       - name: Upload pkcs#11 spy log
         uses: actions/upload-artifact@v3
         with:
