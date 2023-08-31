@@ -4,6 +4,7 @@ on: [push, pull_request]
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
   pkcs11-build-and-test:
@@ -30,3 +31,37 @@ jobs:
       - name: Run tests
         # setting the limit for max # of FDs because of this bug https://bugs.kde.org/show_bug.cgi?id=465435
         run: ulimit -n 1024 && cargo valgrind test --features mocked_meesign
+      - name: Upload cryptoki library file
+        uses: actions/upload-artifact@v3
+        with:
+          name: cryptoki
+          path: ./target/debug/libmeesign_pkcs11.so
+          if-no-files-found: error
+
+  ssh-auth-test:
+    name: SSH Auth Test
+    needs: pkcs11-build-and-test
+    runs-on: ubuntu-latest
+    env:
+      PKCS11SPY_OUTPUT: "pkcs11spy.log"
+      PKCS11SPY: "./libmeesign_pkcs11.so"
+    steps:
+      - name: Download cryptoki library file
+        uses: actions/download-artifact@v3
+        with:
+          name: cryptoki
+          path: .
+          if-no-files-found: error
+      - name: Install test tooling
+        run: sudo apt-get update && sudo apt-get install --assume-yes openssh-client openssh-server opensc
+      - name: set authorized keys
+        run: mkdir ~/.ssh/ && ssh-keygen -D /usr/lib/x86_64-linux-gnu/pkcs11-spy.so -e > ~/.ssh/authorized_keys
+      - name: start ssh server
+        run: sudo service ssh start
+      - name: Authenticate against localhost
+        run: ssh -o StrictHostKeyChecking=no -vvvv -I /usr/lib/x86_64-linux-gnu/pkcs11-spy.so $(whoami)@localhost ls
+      - name: Upload pkcs#11 spy log
+        uses: actions/upload-artifact@v3
+        with:
+          name: pkcs11-spy-log
+          path: pkcs11spy.log
