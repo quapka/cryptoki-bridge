@@ -222,14 +222,14 @@ pub extern "C" fn C_FindObjects(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(state) = STATE.read() else  {
+    let Ok(mut state) = STATE.write() else  {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_ref() else {
+    let Some( state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
-    let filtered_handles = match state.get_session(&hSession) {
-        Some(session) => session.get_filtered_handles(),
+    let filtered_handles = match state.get_session_mut(&hSession) {
+        Some(mut session) => session.get_filtered_handles(ulMaxObjectCount as usize),
         None => return CKR_SESSION_HANDLE_INVALID as CK_RV,
     };
 

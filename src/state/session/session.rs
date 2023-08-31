@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, vec::IntoIter};
 
 use aes::Aes128;
 use openssl::hash::Hasher;
@@ -19,6 +19,8 @@ pub(crate) struct Session {
     hasher: Option<Hasher>,
 
     object_search: Option<ObjectSearch>,
+
+    object_search_iterator: Option<IntoIter<CK_OBJECT_HANDLE>>,
 
     // TODO: objects should be held by the token struct
     objects: HashMap<CK_OBJECT_HANDLE, CryptokiArc>,
@@ -54,6 +56,7 @@ impl Session {
             token,
             encryptor: None,
             signer: None,
+            object_search_iterator: None,
         }
     }
     pub fn get_hasher_mut(&mut self) -> Option<&mut Hasher> {
@@ -73,10 +76,12 @@ impl Session {
     }
 
     pub fn init_object_search(&mut self, object_search: ObjectSearch) {
+        self.object_search_iterator = None;
         self.object_search = Some(object_search);
     }
 
     pub fn reset_object_search(&mut self) {
+        self.object_search_iterator = None;
         self.object_search = None;
     }
 
@@ -111,14 +116,26 @@ impl Session {
     }
 
     // TODO: return an error if search not innited
-    pub fn get_filtered_handles(&self) -> Vec<CK_OBJECT_HANDLE> {
+    pub fn get_filtered_handles(&mut self, object_count: usize) -> Vec<CK_OBJECT_HANDLE> {
         let Some( object_search) = self.object_search.as_ref() else {
             return vec![]; // TODO: return error
         };
-        self.objects
-            .iter()
-            .filter(|(_handle, object)| object.does_template_match(object_search.get_template()))
-            .map(|(&handle, _)| handle)
+        if self.object_search_iterator.is_none() {
+            self.object_search_iterator = Some(
+                self.objects
+                    .iter()
+                    .filter(|(_handle, object)| {
+                        object.does_template_match(object_search.get_template())
+                    })
+                    .map(|(&handle, _)| handle)
+                    .collect::<Vec<CK_OBJECT_HANDLE>>() // TODO: refactor, ineffective
+                    .into_iter(),
+            );
+        }
+        self.object_search_iterator
+            .as_mut()
+            .unwrap()
+            .take(object_count)
             .collect()
     }
 
