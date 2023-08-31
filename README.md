@@ -46,7 +46,7 @@ Currently, there are multiple ways to configure and control the library.
 
 - The library can be found in `./target/release/libmeesign_pkcs11.so`. You can import it into your tool of choice.
 
-### SSH
+### OpenSSH
 
 _Note: Please, read the [configuration](#configuration) section to be able to select the authentication group_
 
