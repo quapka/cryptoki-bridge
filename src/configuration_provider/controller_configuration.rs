@@ -1,3 +1,5 @@
+use std::env;
+
 use serde::Deserialize;
 
 use crate::communicator::GroupId;
@@ -5,6 +7,7 @@ use crate::communicator::GroupId;
 use super::{configuration_provider_error::ConfigurationProviderError, ConfigurationProvider};
 
 static CONTROLLER_PORT: &str = "12345"; // TODO
+static IS_INTERFACE_USED_FOR_FIDO_ENV_NAME: &str = "USED_AS_FIDO";
 
 pub(crate) struct ControllerConfiguration {}
 
@@ -20,8 +23,14 @@ impl ControllerConfiguration {
     }
 
     fn fetch_data(&self) -> Result<InterfaceConfiguration, ConfigurationProviderError> {
+        let is_interface_used_for_fido = env::var(IS_INTERFACE_USED_FOR_FIDO_ENV_NAME).is_ok();
+        let interface = if is_interface_used_for_fido {
+            "webauthn"
+        } else {
+            "cryptoki"
+        };
         let configuration: InterfaceConfiguration = reqwest::blocking::get(format!(
-            "http://www.localhost:{CONTROLLER_PORT}/cryptoki/configuration"
+            "http://www.localhost:{CONTROLLER_PORT}/{interface}/configuration"
         ))?
         .json()?;
         Ok(configuration)
