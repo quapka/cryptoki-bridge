@@ -8,61 +8,183 @@ env:
 
 jobs:
   pkcs11-build-and-test:
-    name: PKCS#11 build & test
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [Windows, Linux]
+        include:
+          - target: Windows
+            os: windows-latest
+            lib_extension: dll
+            lib_prefix: ""
+          - target: Linux
+            os: ubuntu-latest
+            lib_extension: so
+            lib_prefix: "lib"
+
+    name: ${{ matrix.target }} build & test
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - name: Update submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: true
+
       - name: Install Protoc
         uses: arduino/setup-protoc@v2
+
       - name: Install rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-          override: true
-          components: rustfmt, clippy
+
+      - name: Install requirements
+        if: ${{ matrix.target == 'Windows' }}
+        run: |
+          vcpkg --triplet x64-windows-static-md install openssl
+          vcpkg integrate install
       - name: Install valgrind and requirements
-        run: sudo apt-get update && sudo apt-get install --assume-yes valgrind clang libc6-dbg
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          sudo apt-get update 
+          sudo apt-get install --assume-yes valgrind clang libc6-dbg openssl
+
       - name: Build
         run: cargo build --verbose --features mocked_meesign
+
       - name: Install cargo-valgrind
+        if: ${{ matrix.target == 'Linux' }}
         run: cargo install cargo-valgrind
+
       - name: Run tests
+        if: ${{ matrix.target == 'Windows' }}
+        run: cargo test --features mocked_meesign
+      - name: Run tests
+        if: ${{ matrix.target == 'Linux' }}
         # setting the limit for max # of FDs because of this bug https://bugs.kde.org/show_bug.cgi?id=465435
         run: ulimit -n 1024 && cargo valgrind test --features mocked_meesign
-      - name: Upload cryptoki library file
+
+      - name: Upload cryptoki debug build
         uses: actions/upload-artifact@v3
         with:
-          name: cryptoki
-          path: ./target/debug/libmeesign_pkcs11.so
+          name: ${{ matrix.target }}-cryptoki-debug
+          path: ./target/debug/${{ matrix.lib_prefix }}meesign_pkcs11.${{ matrix.lib_extension }}
           if-no-files-found: error
 
   ssh-auth-test:
-    name: SSH Auth Test
+    name: ${{ matrix.target}} SSH Auth Test
     needs: pkcs11-build-and-test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        target: [Linux]
+        include:
+          # - target: Windows TODO
+          #   os: windows-latest
+          #   lib_extension: dll
+          - target: Linux
+            os: ubuntu-latest
+            lib_extension: so
+      fail-fast: false
     env:
       PKCS11SPY_OUTPUT: "pkcs11spy.log"
-      PKCS11SPY: "./libmeesign_pkcs11.so"
+      PKCS11SPY: "./libmeesign_pkcs11.so" # used by PKCS#11 spy as the real library
       PKCS11SPY_LIB: "/usr/lib/x86_64-linux-gnu/pkcs11-spy.so"
+      CRYPTOKI_LIB: ".\\meesign_pkcs11.dll"
     steps:
       - name: Download cryptoki library file
         uses: actions/download-artifact@v3
         with:
-          name: cryptoki
+          name: ${{ matrix.target }}-cryptoki-debug
           path: .
           if-no-files-found: error
+
       - name: Install test tooling
-        run: sudo apt-get update && sudo apt-get install --assume-yes openssh-client openssh-server opensc
+        if: ${{ matrix.target == 'Windows' }}
+        run: |
+          Add-WindowsCapability -Online -Name OpenSSH.Server*
+          Add-WindowsCapability -Online -Name OpenSSH.Client*
+      - name: Install test tooling
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --assume-yes openssh-client openssh-server opensc
+
       - name: set authorized keys
-        run: mkdir ~/.ssh/ && ssh-keygen -D $PKCS11SPY_LIB -e > ~/.ssh/authorized_keys
+        if: ${{ matrix.target == 'Windows' }}
+        run: |
+          mkdir "${HOME}\.ssh"
+          ssh-keygen -D "${CRYPTOKI_LIB}" -e > "${HOME}\.ssh\authorized_keys"
+      - name: set authorized keys
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          mkdir ~/.ssh/
+          ssh-keygen -D $PKCS11SPY_LIB -e > ~/.ssh/authorized_keys
+
       - name: start ssh server
+        if: ${{ matrix.target == 'Windows' }}
+        run: |
+          Get-Service -Name ssh-agent | Set-Service -StartupType Manual
+          Start-Service sshd
+      - name: start ssh server
+        if: ${{ matrix.target == 'Linux' }}
         run: sudo service ssh start
-      - name: Authenticate against localhost
-        run: ssh -o StrictHostKeyChecking=no -vvvv -I $PKCS11SPY_LIB $(whoami)@localhost exit
+
+      - name: Authenticate against the server
+        if: ${{ matrix.target == 'Windows' }}
+        run: ssh -o StrictHostKeyChecking=no -vvvv -I "${CRYPTOKI_LIB}" $(whoami)@localhost exit
+      - name: Authenticate against the server
+        if: ${{ matrix.target == 'Linux' }}
+        run: ssh -o StrictHostKeyChecking=no -vvvv -I ${PKCS11SPY} $(whoami)@localhost exit
+
       - name: Upload pkcs#11 spy log
+        if: ${{ matrix.target == 'Linux' }}
         uses: actions/upload-artifact@v3
         with:
-          name: pkcs11-spy-log
+          name: ${{ matrix.target }}-pkcs11-spy-log
           path: pkcs11spy.log
+
+  production-build:
+    name: ${{ matrix.target }} Production build
+    needs: ssh-auth-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    strategy:
+      matrix:
+        target: [Windows, Linux]
+        include:
+          - target: Windows
+            os: windows-latest
+            lib_extension: dll
+            lib_prefix: ""
+          - target: Linux
+            os: ubuntu-latest
+            lib_extension: so
+            lib_prefix: "lib"
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
+
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install requirements
+        if: ${{ matrix.target == 'Windows' }}
+        run: |
+          vcpkg --triplet x64-windows-static-md install openssl
+          vcpkg integrate install
+
+      - name: Create a production build
+        run: cargo build --release
+
+      - name: Upload cryptoki production build
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.target }}-cryptoki-prod
+          path: ./target/release/${{ matrix.lib_prefix }}meesign_pkcs11.${{ matrix.lib_extension }}
+          if-no-files-found: error
