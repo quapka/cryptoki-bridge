@@ -33,7 +33,7 @@ impl CryptokiObject for PrivateKeyObject {
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
-        if attribute_type == CKA_ALWAYS_AUTHENTICATE as u64 {
+        if attribute_type == CKA_ALWAYS_AUTHENTICATE as CK_ATTRIBUTE_TYPE {
             return Some(CK_FALSE.to_le_bytes().into());
         }
         None

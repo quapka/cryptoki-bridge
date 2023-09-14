@@ -139,7 +139,7 @@ pub extern "C" fn C_GetAttributeValue(
         };
 
         if unsafe { (*pTemplate.offset(i)).pValue.is_null() } {
-            unsafe { (*pTemplate.offset(i)).ulValueLen = attribute.len() as u64 }
+            unsafe { (*pTemplate.offset(i)).ulValueLen = attribute.len() as CK_ULONG }
             continue;
         }
         unsafe {
@@ -148,7 +148,7 @@ pub extern "C" fn C_GetAttributeValue(
                 (*pTemplate.offset(i)).pValue as *mut u8,
                 attribute.len(),
             );
-            (*pTemplate.offset(i)).ulValueLen = attribute.len() as u64
+            (*pTemplate.offset(i)).ulValueLen = attribute.len() as CK_ULONG
         };
     }
 
@@ -234,7 +234,7 @@ pub extern "C" fn C_FindObjects(
     let copy_count = min(ulMaxObjectCount as usize, filtered_handles.len());
     unsafe {
         ptr::copy(filtered_handles.as_ptr(), phObject, copy_count);
-        *pulObjectCount = copy_count as u64;
+        *pulObjectCount = copy_count as CK_ULONG;
     }
     CKR_OK as CK_RV
 }

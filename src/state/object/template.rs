@@ -35,7 +35,7 @@ impl Template {
     }
 
     pub(crate) fn get_class(&self) -> Option<ObjectClass> {
-        let Some(value) = self.get_value(&(CKA_CLASS as u64)) else {return None;};
+        let Some(value) = self.get_value(&(CKA_CLASS as CK_ATTRIBUTE_TYPE)) else {return None;};
         ObjectClass::from_vec(&value)
     }
 }

@@ -118,7 +118,7 @@ pub extern "C" fn C_Encrypt(
     }
 
     unsafe {
-        *pulEncryptedDataLen = cipher_length as u64;
+        *pulEncryptedDataLen = cipher_length as CK_ULONG;
     }
 
     CKR_OK as CK_RV

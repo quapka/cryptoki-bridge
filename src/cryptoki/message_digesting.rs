@@ -102,7 +102,7 @@ pub extern "C" fn C_Digest(
 
     let digest = digest.to_vec();
     unsafe {
-        *pulDigestLen = digest.len() as u64;
+        *pulDigestLen = digest.len() as CK_ULONG;
     }
     // todo: check convention from 5.2
 
@@ -123,8 +123,8 @@ mod test {
 
     use crate::cryptoki::{
         bindings::{
-            CKM_SHA256, CKR_OK, CK_BYTE_PTR, CK_MECHANISM, CK_MECHANISM_PTR, CK_RV,
-            CK_SESSION_HANDLE_PTR, CK_ULONG, CK_ULONG_PTR, CK_VOID_PTR, NULL_PTR,
+            CKM_SHA256, CKR_OK, CK_BYTE_PTR, CK_MECHANISM, CK_MECHANISM_PTR, CK_MECHANISM_TYPE,
+            CK_RV, CK_SESSION_HANDLE_PTR, CK_ULONG, CK_ULONG_PTR, CK_VOID_PTR, NULL_PTR,
         },
         general_purpose::C_Initialize,
         message_digesting::{C_Digest, C_DigestInit},
@@ -147,7 +147,7 @@ mod test {
             )
         );
         let mut digest_mechanism = CK_MECHANISM {
-            mechanism: CKM_SHA256 as u64,
+            mechanism: CKM_SHA256 as CK_MECHANISM_TYPE,
             pParameter: NULL_PTR as CK_VOID_PTR,
             ulParameterLen: 0,
         };
@@ -164,7 +164,7 @@ mod test {
             C_Digest(
                 session_handle,
                 data.as_mut_ptr() as CK_BYTE_PTR,
-                data.len() as u64,
+                data.len() as CK_ULONG,
                 digest.as_mut_ptr() as CK_BYTE_PTR,
                 &mut digest_len as CK_ULONG_PTR
             ),

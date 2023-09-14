@@ -46,22 +46,22 @@ impl CryptokiObject for PublicKeyObject {
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
         // todo implement
-        if attribute_type == CKA_KEY_TYPE as u64 {
+        if attribute_type == CKA_KEY_TYPE as CK_ATTRIBUTE_TYPE {
             return Some(CKK_ECDSA.to_le_bytes().into());
         }
-        if attribute_type == CKA_LABEL as u64 {
+        if attribute_type == CKA_LABEL as CK_ATTRIBUTE_TYPE {
             return Some("meesign".as_bytes().into());
         }
 
-        if attribute_type == CKA_ID as u64 {
+        if attribute_type == CKA_ID as CK_ATTRIBUTE_TYPE {
             return Some("".as_bytes().into());
         }
 
-        if attribute_type == CKA_EC_PARAMS as u64 {
+        if attribute_type == CKA_EC_PARAMS as CK_ATTRIBUTE_TYPE {
             return Some(hex::decode(NIST_P256_EC_PARAMS_DER_HEX).unwrap());
         }
 
-        if attribute_type == CKA_EC_POINT as u64 {
+        if attribute_type == CKA_EC_POINT as CK_ATTRIBUTE_TYPE {
             return Some(self.format_public_key());
         }
         None
