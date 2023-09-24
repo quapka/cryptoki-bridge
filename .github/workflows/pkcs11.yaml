@@ -165,6 +165,11 @@ jobs:
         with:
           submodules: true
 
+      - uses: olegtarasov/get-tag@v2.1.2
+        id: tagName
+        with:
+          tagRegex: "v(.*)"
+
       - name: Install Protoc
         uses: arduino/setup-protoc@v2
 
@@ -173,14 +178,44 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install cargo get
+        run: cargo install cargo-get
+
+      - name: Compare versions
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          if [ ${{ steps.tagName.outputs.tag }} != $(cargo get package.version) ]; then
+            echo "Tag version and cargo version don't match. Please, fix it." >&2;
+            exit 1;
+          fi
+
       - name: Install requirements
         if: ${{ matrix.target == 'Windows' }}
         run: |
           vcpkg --triplet x64-windows-static-md install openssl
           vcpkg integrate install
+      - name: Install requirements
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --assume-yes clang libclang-dev
 
       - name: Create a production build
         run: cargo build --release
+
+      - name: Debian package Creation
+        if: ${{ matrix.target == 'Linux' }}
+        run: |
+          cargo install cargo-deb
+          cargo deb --no-build
+
+      - name: Debian package Upload
+        if: ${{ matrix.target == 'Linux' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: debian-cryptoki-prod
+          path: ./target/debian/pkcs11_*.deb
+          if-no-files-found: error
 
       - name: Upload cryptoki production build
         uses: actions/upload-artifact@v3
@@ -188,3 +223,24 @@ jobs:
           name: ${{ matrix.target }}-cryptoki-prod
           path: ./target/release/${{ matrix.lib_prefix }}meesign_pkcs11.${{ matrix.lib_extension }}
           if-no-files-found: error
+
+  release:
+    needs: production-build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Debian package
+        uses: actions/download-artifact@v3
+        with:
+          name: debian-cryptoki-prod
+          path: .
+          if-no-files-found: error
+
+      - name: Packagecloud Upload
+        uses: computology/packagecloud-github-action@v0.6
+        with:
+          PACKAGE-NAME: ./pkcs11_*.deb
+          PACKAGECLOUD-USERNAME: kristian_mika
+          PACKAGECLOUD-REPONAME: mpc-bridge/any/any
+          PACKAGECLOUD-DISTRO: debian
+          PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}

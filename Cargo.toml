@@ -2,11 +2,28 @@
 name = "pkcs11"
 version = "0.1.0"
 edition = "2021"
+description = "A PKCS#11 implementation that delegates tasks to a MeeSign server instance."
+authors = ["Kristian Mika <kristian.mika@protonmail.com>"]
+license = "MIT"
+
+[package.metadata.deb]
+maintainer = "Kristian Mika <kristian.mika@protonmail.com>"
+extended-description = """\
+A PKCS#11 implementation that delegates tasks to a MeeSign server instance."""
+depends = "$auto"
+section = "utility"
+priority = "optional"
+assets = [
+    [
+        "target/release/libmeesign_pkcs11.so",
+        "usr/lib/libmeesign_pkcs11.so",
+        "755",
+    ],
+]
 
 [features]
 default = []
 mocked_meesign = ["dep:p256"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 name = "meesign_pkcs11"
