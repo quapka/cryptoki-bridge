@@ -1,5 +1,5 @@
 [package]
-name = "pkcs11"
+name = "cryptoki-bridge"
 version = "0.1.0"
 edition = "2021"
 description = "A PKCS#11 implementation that delegates tasks to a MeeSign server instance."
@@ -15,8 +15,8 @@ section = "utility"
 priority = "optional"
 assets = [
     [
-        "target/release/libmeesign_pkcs11.so",
-        "usr/lib/libmeesign_pkcs11.so",
+        "target/release/libcryptoki_bridge.so",
+        "usr/lib/libcryptoki_bridge.so",
         "755",
     ],
 ]
@@ -26,7 +26,7 @@ default = []
 mocked_meesign = ["dep:p256"]
 
 [lib]
-name = "meesign_pkcs11"
+name = "cryptoki_bridge"
 crate-type = ["cdylib"]
 
 [build-dependencies]

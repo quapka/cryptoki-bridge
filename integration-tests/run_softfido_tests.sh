@@ -28,7 +28,7 @@ build-softfido
 
 trap 'cleanup' ERR
 
-PKCS11SPY="`pwd`/../target/debug/libmeesign_pkcs11.so" \
+PKCS11SPY="`pwd`/../target/debug/libcryptoki_bridge.so" \
     PKCS11SPY_OUTPUT="`pwd`/pkcs11_spy_log.txt" \
     ./softfido/target/debug/softfido\
     --token-label  'Meesign: testgrp' \

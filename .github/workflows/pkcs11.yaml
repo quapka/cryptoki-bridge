@@ -66,7 +66,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}-cryptoki-debug
-          path: ./target/debug/${{ matrix.lib_prefix }}meesign_pkcs11.${{ matrix.lib_extension }}
+          path: ./target/debug/${{ matrix.lib_prefix }}cryptoki_bridge.${{ matrix.lib_extension }}
           if-no-files-found: error
 
   ssh-auth-test:
@@ -86,9 +86,9 @@ jobs:
       fail-fast: false
     env:
       PKCS11SPY_OUTPUT: "pkcs11spy.log"
-      PKCS11SPY: "./libmeesign_pkcs11.so" # used by PKCS#11 spy as the real library
+      PKCS11SPY: "./libcryptoki_bridge.so" # used by PKCS#11 spy as the real library
       PKCS11SPY_LIB: "/usr/lib/x86_64-linux-gnu/pkcs11-spy.so"
-      CRYPTOKI_LIB: ".\\meesign_pkcs11.dll"
+      CRYPTOKI_LIB: ".\\cryptoki_bridge.dll"
     steps:
       - name: Download cryptoki library file
         uses: actions/download-artifact@v3
@@ -214,14 +214,14 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: debian-cryptoki-prod
-          path: ./target/debian/pkcs11_*.deb
+          path: ./target/debian/cryptoki-bridge_*.deb
           if-no-files-found: error
 
       - name: Upload cryptoki production build
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.target }}-cryptoki-prod
-          path: ./target/release/${{ matrix.lib_prefix }}meesign_pkcs11.${{ matrix.lib_extension }}
+          path: ./target/release/${{ matrix.lib_prefix }}cryptoki_bridge.${{ matrix.lib_extension }}
           if-no-files-found: error
 
   release:
@@ -239,7 +239,7 @@ jobs:
       - name: Packagecloud Upload
         uses: computology/packagecloud-github-action@v0.6
         with:
-          PACKAGE-NAME: ./pkcs11_*.deb
+          PACKAGE-NAME: ./cryptoki-bridge_*.deb
           PACKAGECLOUD-USERNAME: kristian_mika
           PACKAGECLOUD-REPONAME: mpc-bridge/any/any
           PACKAGECLOUD-DISTRO: debian
