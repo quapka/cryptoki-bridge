@@ -7,9 +7,10 @@ use rand::{rngs::OsRng, Rng};
 
 use crate::{
     state::object::{
-        cryptoki_object::CryptokiArc,
+        cryptoki_object::{CryptokiArc, CryptokiObject},
         private_key_object::PrivateKeyObject,
         public_key_object::{self, PublicKeyObject},
+        secret_key_object::SecretKeyObject,
         template::Template,
     },
     STATE,
@@ -43,10 +44,10 @@ pub extern "C" fn C_GenerateKey(
     if pMechanism.is_null() || pTemplate.is_null() || phKey.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
@@ -61,16 +62,14 @@ pub extern "C" fn C_GenerateKey(
         template.set_len(ulCount as usize);
     }
     let template = Template::from(template);
-    let Some(mut object):Option<CryptokiArc> = template.into() else {
-        return CKR_TEMPLATE_INCOMPLETE as CK_RV;
-    };
+    let mut object = SecretKeyObject::from_template(template);
 
     let key: [u8; 32] = OsRng.gen();
     object.store_data(key.into());
 
     let return_code = match state.get_session_mut(&hSession) {
         Some(mut session) => {
-            let handle = session.create_object(object);
+            let handle = session.create_object(Arc::new(object));
             unsafe { *phKey = handle };
             CKR_OK as CK_RV
         }
@@ -104,15 +103,15 @@ pub extern "C" fn C_GenerateKeyPair(
     phPublicKey: CK_OBJECT_HANDLE_PTR,
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
-    let Ok(state) = STATE.read() else  {
+    let Ok(state) = STATE.read() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
     let Some(state) = state.as_ref() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(session) = state.get_session(&hSession) else{
-       return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(session) = state.get_session(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
     let (private_key_handle, pubkey_handle) = session.get_keypair();
 

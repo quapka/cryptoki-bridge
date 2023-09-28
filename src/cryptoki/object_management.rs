@@ -1,7 +1,10 @@
 use std::{cmp::min, ptr};
 
 use crate::{
-    state::object::{attribute::Attribute, object_search::ObjectSearch, template::Template},
+    state::object::{
+        attribute::Attribute, cryptoki_object::CryptokiArc, object_search::ObjectSearch,
+        template::Template,
+    },
     STATE,
 };
 
@@ -32,10 +35,10 @@ pub extern "C" fn C_CreateObject(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
@@ -45,9 +48,10 @@ pub extern "C" fn C_CreateObject(
         template.set_len(ulCount as usize);
     }
     let template = Template::from(template);
-    let Some(object) = template.into() else {
+    let Some(object): Option<CryptokiArc> = template.into() else {
         return CKR_TEMPLATE_INCOMPLETE as CK_RV;
     };
+    let object = object.value;
     let return_code = match state.get_session_mut(&hSession) {
         Some(mut session) => {
             let object_handle = session.create_object(object);
@@ -71,15 +75,15 @@ pub extern "C" fn C_CreateObject(
 #[allow(non_snake_case)]
 #[no_mangle]
 pub extern "C" fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE) -> CK_RV {
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(mut session) =  state.get_session_mut(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(mut session) = state.get_session_mut(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
 
     match session.destroy_object(&hObject) {
@@ -108,15 +112,15 @@ pub extern "C" fn C_GetAttributeValue(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(state) = STATE.read() else  {
+    let Ok(state) = STATE.read() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_ref() else {
+    let Some(state) = state.as_ref() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(session) =  state.get_session(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(session) = state.get_session(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
     let Some(object) = session.get_object(hObject) else {
         return CKR_OBJECT_HANDLE_INVALID as CK_RV;
@@ -134,7 +138,8 @@ pub extern "C" fn C_GetAttributeValue(
 
     for i in 0..(ulCount as isize) {
         // todo: implement behaviour by spec (5 options)
-        let Some(attribute) = object.value.read().unwrap().get_attribute(template[i as usize].get_attribute_type()) else {
+        let Some(attribute) = object.get_attribute(template[i as usize].get_attribute_type())
+        else {
             return CKR_ATTRIBUTE_TYPE_INVALID as CK_RV;
         };
 
@@ -175,10 +180,10 @@ pub extern "C" fn C_FindObjectsInit(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
@@ -220,10 +225,10 @@ pub extern "C" fn C_FindObjects(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
     let filtered_handles = match state.get_session_mut(&hSession) {
@@ -247,7 +252,7 @@ pub extern "C" fn C_FindObjects(
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "C" fn C_FindObjectsFinal(hSession: CK_SESSION_HANDLE) -> CK_RV {
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
     let Some(state) = state.as_mut() else {

@@ -7,9 +7,18 @@ use crate::{
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
         root_configuration::RootConfiguration, ConfigurationProvider,
     },
-    cryptoki::bindings::{CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
+    cryptoki::{
+        self,
+        bindings::{CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
+    },
+    persistence::{cryptoki_repo::CryptokiRepo, sqlite_cryptoki_repo::SqliteCryptokiRepo},
 };
-use std::sync::{RwLockReadGuard, RwLockWriteGuard};
+use home::home_dir;
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
+};
 use tokio::runtime::Runtime;
 use tonic::transport::Certificate;
 
@@ -24,6 +33,7 @@ pub(crate) struct CryptokiState {
     runtime: Runtime,
     slots: Slots,
     configuration: RootConfiguration,
+    cryptoki_repo: Arc<dyn CryptokiRepo>,
 }
 
 impl CryptokiState {
@@ -116,13 +126,15 @@ impl CryptokiState {
         communicator: Box<dyn Communicator>,
         runtime: Runtime,
         configuration: RootConfiguration,
+        cryptoki_repo: Arc<dyn CryptokiRepo>,
     ) -> Self {
         Self {
-            sessions: Default::default(),
+            sessions: Sessions::new(cryptoki_repo.clone()),
             communicator,
             runtime,
             slots: Slots::new(),
             configuration,
+            cryptoki_repo,
         }
     }
 
@@ -131,10 +143,27 @@ impl CryptokiState {
     }
 }
 
+fn ensure_file_structure() -> Result<(), ()> {
+    let cryptoki_directory_path = get_cryptoki_path();
+    fs::create_dir(cryptoki_directory_path).unwrap();
+
+    Ok(())
+}
+fn get_cryptoki_path() -> PathBuf {
+    let Some(home_directory) = home_dir() else {
+        todo!();
+    };
+
+    static CRYPTOKI_DIRECTORY_NAME: &str = ".cryptoki-bridge";
+    let cryptoki_directory_path = home_directory.join(CRYPTOKI_DIRECTORY_NAME);
+    cryptoki_directory_path
+}
+
 #[cfg(not(feature = "mocked_meesign"))]
 impl Default for CryptokiState {
     // TODO: just tmp, remove later, pls don't look
     fn default() -> Self {
+        ensure_file_structure().unwrap();
         let configuration = RootConfiguration::new()
             .add_provider(Box::new(ControllerConfiguration::new()))
             .add_provider(Box::new(EnvConfiguration::new()));
@@ -151,7 +180,11 @@ impl Default for CryptokiState {
         let meesign =
             runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
 
-        Self::new(Box::new(meesign), runtime, configuration)
+        let cryptoki_repo = Arc::new(SqliteCryptokiRepo::new(get_cryptoki_path()));
+        cryptoki_repo
+            .create_tables()
+            .expect("Couldn't crate tables");
+        Self::new(Box::new(meesign), runtime, configuration, cryptoki_repo)
     }
 }
 
@@ -165,6 +198,10 @@ impl Default for CryptokiState {
         let configuration = RootConfiguration::new()
             .add_provider(Box::new(ControllerConfiguration::new()))
             .add_provider(Box::new(EnvConfiguration::new()));
-        Self::new(Box::new(meesign), runtime, configuration)
+        let cryptoki_repo = Arc::new(SqliteCryptokiRepo::new(get_cryptoki_path()));
+        cryptoki_repo
+            .create_tables()
+            .expect("Couldn't crate tables");
+        Self::new(Box::new(meesign), runtime, configuration, cryptoki_repo)
     }
 }

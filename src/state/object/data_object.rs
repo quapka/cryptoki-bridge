@@ -1,5 +1,7 @@
 use std::vec;
 
+use uuid::Uuid;
+
 use crate::cryptoki::bindings::{
     CKA_COPYABLE, CKA_DESTROYABLE, CKA_LABEL, CKA_MODIFIABLE, CKA_PRIVATE, CKA_TOKEN,
     CKA_UNIQUE_ID, CKA_VALUE, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL, CK_FALSE, CK_TRUE,
@@ -9,6 +11,7 @@ use super::{cryptoki_object::CryptokiObject, template::Template};
 
 #[derive(PartialEq, Eq, Hash, Default)]
 pub(crate) struct DataObject {
+    id: Uuid,
     is_token: CK_BBOOL,
     is_private: CK_BBOOL,
     is_modifiable: CK_BBOOL,
@@ -51,6 +54,7 @@ impl CryptokiObject for DataObject {
         //     unimplemented!()
         // }
         Self {
+            id: Uuid::new_v4(),
             is_token: template
                 .get_bool(&(CKA_TOKEN as CK_ATTRIBUTE_TYPE))
                 .unwrap_or(CK_TRUE as u8),
@@ -87,6 +91,10 @@ impl CryptokiObject for DataObject {
 
     fn get_data(&self) -> Vec<u8> {
         self.data.clone()
+    }
+
+    fn get_id(&self) -> &uuid::Uuid {
+        todo!()
     }
 }
 

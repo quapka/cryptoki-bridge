@@ -31,15 +31,15 @@ pub extern "C" fn C_EncryptInit(
     if pMechanism.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(mut session) =  state.get_session_mut(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(mut session) = state.get_session_mut(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
     let mechanism = unsafe { *pMechanism };
     // todo: support other algos
@@ -50,7 +50,7 @@ pub extern "C" fn C_EncryptInit(
     let Some(key) = session.get_object(hKey) else {
         return CKR_KEY_HANDLE_INVALID as CK_RV;
     };
-    let key = key.value.read().unwrap().get_data();
+    let key = key.get_data();
     let key = GenericArray::clone_from_slice(&key[0..16]);
     let encryptor = Aes128::new(&key);
     session.set_encryptor(encryptor);
@@ -79,18 +79,18 @@ pub extern "C" fn C_Encrypt(
     if pData.is_null() || pulEncryptedDataLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(state) = STATE.read() else  {
+    let Ok(state) = STATE.read() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_ref() else {
+    let Some(state) = state.as_ref() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(session) =  state.get_session(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(session) = state.get_session(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
 
-    let Some(encryptor)=session.get_encryptor() else {
+    let Some(encryptor) = session.get_encryptor() else {
         return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
     };
 

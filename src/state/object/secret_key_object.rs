@@ -1,9 +1,12 @@
+use uuid::Uuid;
+
 use crate::cryptoki::bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL, CK_FALSE, CK_TRUE};
 
 use super::{cryptoki_object::CryptokiObject, data_object::DataObject, template::Template};
 
 // TODO: consider using bool at this lvl of abstraction
 pub(crate) struct SecretKeyObject {
+    id: Uuid,
     data: DataObject,
     is_sensitive: CK_BBOOL,
     supports_encryption: CK_BBOOL,
@@ -39,6 +42,7 @@ impl CryptokiObject for SecretKeyObject {
         let data = DataObject::from_template(template);
         // todo: create from template
         Self {
+            id: Uuid::new_v4(),
             data,
             is_sensitive: CK_FALSE as CK_BBOOL,
             supports_encryption: CK_FALSE as CK_BBOOL,
@@ -65,6 +69,10 @@ impl CryptokiObject for SecretKeyObject {
 
     fn get_data(&self) -> Vec<u8> {
         self.data.get_data()
+    }
+
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.id
     }
 }
 

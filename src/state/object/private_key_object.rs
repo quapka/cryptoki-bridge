@@ -1,14 +1,21 @@
+use uuid::Uuid;
+
 use crate::cryptoki::bindings::{CKA_ALWAYS_AUTHENTICATE, CK_ATTRIBUTE_TYPE, CK_FALSE};
 
 use super::{cryptoki_object::CryptokiObject, object_class::ObjectClass, template::Template};
 
 pub(crate) struct PrivateKeyObject {
+    id: Uuid,
+
     group_id: Vec<u8>,
 }
 
 impl PrivateKeyObject {
     pub(crate) fn new(group_id: Vec<u8>) -> Self {
-        Self { group_id }
+        Self {
+            group_id,
+            id: Uuid::new_v4(),
+        }
     }
 }
 impl CryptokiObject for PrivateKeyObject {
@@ -29,7 +36,10 @@ impl CryptokiObject for PrivateKeyObject {
     {
         // TODO
 
-        Self { group_id: vec![] }
+        Self {
+            group_id: vec![],
+            id: Uuid::new_v4(),
+        }
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
@@ -41,5 +51,9 @@ impl CryptokiObject for PrivateKeyObject {
 
     fn get_data(&self) -> Vec<u8> {
         self.group_id.clone()
+    }
+
+    fn get_id(&self) -> &Uuid {
+        &self.id
     }
 }

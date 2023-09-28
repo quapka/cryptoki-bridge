@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::cryptoki::bindings::{
     CKA_EC_PARAMS, CKA_EC_POINT, CKA_ID, CKA_KEY_TYPE, CKA_LABEL, CKK_ECDSA, CK_ATTRIBUTE_TYPE,
 };
@@ -8,11 +10,15 @@ const DER_OCTET_STRING_TAG: u8 = 0x04;
 const NIST_P256_EC_PARAMS_DER_HEX: &str = "06082a8648ce3d030107";
 pub(crate) struct PublicKeyObject {
     data: Vec<u8>,
+    id: Uuid,
 }
 
 impl PublicKeyObject {
     pub(crate) fn new(data: Vec<u8>) -> Self {
-        Self { data }
+        Self {
+            data,
+            id: Uuid::new_v4(),
+        }
     }
 
     fn format_public_key(&self) -> Vec<u8> {
@@ -41,7 +47,10 @@ impl CryptokiObject for PublicKeyObject {
     {
         // TODO
 
-        Self { data: vec![] }
+        Self {
+            data: vec![],
+            id: Uuid::new_v4(),
+        }
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
@@ -69,5 +78,9 @@ impl CryptokiObject for PublicKeyObject {
 
     fn get_data(&self) -> Vec<u8> {
         self.data.clone()
+    }
+
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.id
     }
 }

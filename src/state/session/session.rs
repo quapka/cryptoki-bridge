@@ -1,20 +1,21 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-    vec::IntoIter,
-};
+use std::{sync::Arc, vec::IntoIter};
 
 use aes::Aes128;
+use dashmap::DashMap;
 use openssl::hash::Hasher;
 use rand::{rngs::OsRng, Rng};
+use uuid::Uuid;
 
 use crate::{
     communicator::{AuthResponse, GroupId, TaskId},
     cryptoki::bindings::CK_OBJECT_HANDLE,
+    persistence::cryptoki_repo::CryptokiRepo,
     state::{
         object::{
-            cryptoki_object::CryptokiArc, object_search::ObjectSearch,
-            private_key_object::PrivateKeyObject, public_key_object::PublicKeyObject,
+            cryptoki_object::{CryptokiArc, CryptokiObject},
+            object_search::ObjectSearch,
+            private_key_object::PrivateKeyObject,
+            public_key_object::PublicKeyObject,
         },
         slots::TokenStore,
     },
@@ -30,8 +31,9 @@ pub(crate) struct Session {
     object_search_iterator: Option<IntoIter<CK_OBJECT_HANDLE>>,
 
     // TODO: objects should be held by the token struct
-    objects: HashMap<CK_OBJECT_HANDLE, CryptokiArc>,
-
+    // TODO: also store token ID
+    // TODO: RwLock
+    handle_resolver: HandleResolver,
     token: TokenStore,
 
     encryptor: Option<Aes128>,
@@ -39,16 +41,61 @@ pub(crate) struct Session {
     signer: Option<Signer>,
 
     key_pair: Option<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE)>,
+
+    cryptoki_repo: Arc<dyn CryptokiRepo>,
 }
 
+struct HandleResolver {
+    object_handles: DashMap<Uuid, CK_OBJECT_HANDLE>,
+    object_ids: DashMap<CK_OBJECT_HANDLE, Uuid>,
+}
+
+impl HandleResolver {
+    pub(crate) fn new() -> Self {
+        Self {
+            object_handles: DashMap::new(),
+            object_ids: DashMap::new(),
+        }
+    }
+
+    fn generate_object_handle(&self) -> CK_OBJECT_HANDLE {
+        let mut object_handle = OsRng.gen_range(0..CK_OBJECT_HANDLE::MAX);
+        while self.object_ids.contains_key(&object_handle) {
+            object_handle = OsRng.gen_range(0..CK_OBJECT_HANDLE::MAX);
+        }
+
+        object_handle
+    }
+
+    pub(crate) fn get_or_insert_object_handle(&self, object_id: Uuid) -> CK_OBJECT_HANDLE {
+        let handle = self.object_handles.entry(object_id).or_insert_with(|| {
+            let handle = self.generate_object_handle();
+            self.object_ids.insert(handle, object_id);
+            handle
+        });
+        *handle.value()
+    }
+
+    pub(crate) fn destroy_object_mapping(&self, handle: CK_OBJECT_HANDLE) -> Option<Uuid> {
+        let Some(uuid) = self.object_ids.remove(&handle).map(|(_, uuid)| uuid) else {
+            return None;
+        };
+        self.object_handles.remove(&uuid);
+        Some(uuid)
+    }
+
+    pub(crate) fn get_object_id(&self, handle: CK_OBJECT_HANDLE) -> Option<Uuid> {
+        self.object_ids.get(&handle).map(|x| *x.value())
+    }
+}
 #[derive(Clone)]
 pub(crate) struct Signer {
-    pub key: CryptokiArc,
+    pub key: Arc<dyn CryptokiObject>,
     pub response: Option<AuthResponse>,
     pub task_id: Option<TaskId>,
 }
 impl Signer {
-    pub(crate) fn new(key: CryptokiArc) -> Self {
+    pub(crate) fn new(key: Arc<dyn CryptokiObject>) -> Self {
         Self {
             key,
             response: None,
@@ -57,18 +104,19 @@ impl Signer {
     }
 }
 impl Session {
-    pub(crate) fn new(token: TokenStore) -> Self {
+    pub(crate) fn new(token: TokenStore, cryptoki_repo: Arc<dyn CryptokiRepo>) -> Self {
         // TODO: refactor
         let pubkey: GroupId = token.read().unwrap().get_public_key().into();
         let mut session = Self {
             hasher: None,
             object_search: None,
-            objects: Default::default(),
             token,
             encryptor: None,
             signer: None,
             object_search_iterator: None,
             key_pair: None,
+            cryptoki_repo,
+            handle_resolver: HandleResolver::new(),
         };
 
         session.key_pair = Some(session.create_communicator_keypair(pubkey));
@@ -103,30 +151,36 @@ impl Session {
         self.object_search = None;
     }
 
-    pub fn create_object(&mut self, object: CryptokiArc) -> CK_OBJECT_HANDLE {
-        let object_handle = self.generate_object_handle();
-
-        let _ = self.objects.insert(object_handle, object);
-        object_handle
+    pub fn create_object(&mut self, object: Arc<dyn CryptokiObject>) -> CK_OBJECT_HANDLE {
+        // todo: error handling
+        let object_id = self.cryptoki_repo.store_object(object).unwrap();
+        self.handle_resolver.get_or_insert_object_handle(object_id)
     }
 
     // TODO: custom error
-    pub fn destroy_object(&mut self, object_handle: &CK_OBJECT_HANDLE) -> Option<CryptokiArc> {
-        // todo: are we sure this is the only arc?
-        self.objects.remove(object_handle)
+    pub fn destroy_object(
+        &mut self,
+        object_handle: &CK_OBJECT_HANDLE,
+    ) -> Option<Arc<dyn CryptokiObject>> {
+        let Some(object_id) = self
+            .handle_resolver
+            .destroy_object_mapping(object_handle.clone())
+        else {
+            return None;
+        };
+        let destroyed_object = self.cryptoki_repo.destroy_object(object_id).unwrap();
+        destroyed_object
     }
 
-    pub(crate) fn get_object(&self, object_handle: CK_OBJECT_HANDLE) -> Option<CryptokiArc> {
-        self.objects.get(&object_handle).cloned()
-    }
-
-    fn generate_object_handle(&self) -> CK_OBJECT_HANDLE {
-        let mut object_handle = OsRng.gen_range(0..CK_OBJECT_HANDLE::MAX);
-        while self.objects.contains_key(&object_handle) {
-            object_handle = OsRng.gen_range(0..CK_OBJECT_HANDLE::MAX);
-        }
-
-        object_handle
+    pub(crate) fn get_object(
+        &self,
+        object_handle: CK_OBJECT_HANDLE,
+    ) -> Option<Arc<dyn CryptokiObject>> {
+        // TODO: error handling
+        let Some(object_id) = self.handle_resolver.get_object_id(object_handle) else {
+            return None;
+        };
+        self.cryptoki_repo.get_object(object_id.clone()).unwrap()
     }
 
     pub(crate) fn get_token(&self) -> TokenStore {
@@ -135,20 +189,31 @@ impl Session {
 
     // TODO: return an error if search not innited
     pub fn get_filtered_handles(&mut self, object_count: usize) -> Vec<CK_OBJECT_HANDLE> {
-        let Some( object_search) = self.object_search.as_ref() else {
+        let Some(object_search) = self.object_search.as_ref() else {
             return vec![]; // TODO: return error
         };
         if self.object_search_iterator.is_none() {
             self.object_search_iterator = Some(
-                self.objects
+                self.cryptoki_repo
+                    .get_objects(self.object_search.as_ref().unwrap())
+                    .unwrap()
                     .iter()
-                    .filter(|(_handle, object)| {
-                        object.does_template_match(object_search.get_template())
+                    .map(|object| {
+                        self.handle_resolver
+                            .get_or_insert_object_handle(object.get_id().clone())
                     })
-                    .map(|(&handle, _)| handle)
-                    .collect::<Vec<CK_OBJECT_HANDLE>>() // TODO: refactor, ineffective
+                    .collect::<Vec<CK_OBJECT_HANDLE>>()
                     .into_iter(),
-            );
+            )
+
+            // self.objects
+            //     .iter()
+            //     .filter(|(_handle, object)| {
+            //         object.does_template_match(object_search.get_template())
+            //     })
+            //     .map(|(&handle, _)| handle)
+            //     .collect::<Vec<CK_OBJECT_HANDLE>>() // TODO: refactor, ineffective
+            //     .into_iter(),
         }
         self.object_search_iterator
             .as_mut()
@@ -206,13 +271,10 @@ impl Session {
         pubkey: GroupId,
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         let pubkey_object = PublicKeyObject::new(pubkey.clone());
-        let pubkey_handle = self.create_object(CryptokiArc {
-            value: Arc::new(RwLock::new(pubkey_object)),
-        });
+        let pubkey_handle = self.create_object(Arc::new(pubkey_object));
+
         let private_key = PrivateKeyObject::new(pubkey);
-        let private_key_handle = self.create_object(CryptokiArc {
-            value: Arc::new(RwLock::new(private_key)),
-        });
+        let private_key_handle = self.create_object(Arc::new(private_key));
         (private_key_handle, pubkey_handle)
     }
 }

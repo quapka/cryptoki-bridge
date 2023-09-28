@@ -30,9 +30,9 @@ use crate::{state::state::CryptokiState, STATE};
 #[allow(non_snake_case)]
 pub extern "C" fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
     // TODO: check later if some actions are required
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
-   };
+    };
     let _ = state.insert(CryptokiState::default());
     CKR_OK as CK_RV
 }
@@ -49,12 +49,12 @@ pub extern "C" fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
     if !pReserved.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
-   };
+    };
     let Some(state) = state.as_mut() else {
-       return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-   };
+        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
+    };
 
     state.finalize();
 

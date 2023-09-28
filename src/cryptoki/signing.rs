@@ -23,13 +23,13 @@ pub extern "C" fn C_SignInit(
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
 ) -> CK_RV {
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
-    let Some(mut session) = state.get_session_mut(&hSession) else{
+    let Some(mut session) = state.get_session_mut(&hSession) else {
         return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
     let Some(signing_key) = session.get_object(hKey) else {
@@ -65,13 +65,13 @@ pub extern "C" fn C_Sign(
     }
     let mut signer_ = None;
     {
-        let Ok(state) = STATE.read() else  {
+        let Ok(state) = STATE.read() else {
             return CKR_GENERAL_ERROR as CK_RV;
         };
-        let Some( state) = state.as_ref() else {
+        let Some(state) = state.as_ref() else {
             return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
         };
-        let Some(session) = state.get_session(&hSession) else{
+        let Some(session) = state.get_session(&hSession) else {
             return CKR_SESSION_HANDLE_INVALID as CK_RV;
         };
         let Some(signer) = session.get_signer() else {
@@ -82,7 +82,7 @@ pub extern "C" fn C_Sign(
     let mut signer = signer_.unwrap();
     if signer.response.is_none() {
         // response not stored from the previous call, send the request
-        let pubkey = signer.key.value.read().unwrap().get_data();
+        let pubkey = signer.key.get_data();
 
         let mut auth_data = Vec::with_capacity(ulDataLen as usize);
         unsafe {
@@ -92,25 +92,27 @@ pub extern "C" fn C_Sign(
 
         let mut response_ = None;
         {
-            let Ok(mut state) = STATE.write() else  {
+            let Ok(mut state) = STATE.write() else {
                 return CKR_GENERAL_ERROR as CK_RV;
             };
-            let Some( state) = state.as_mut() else {
+            let Some(state) = state.as_mut() else {
                 return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
             };
 
-            let Ok(Some(response)) = state.send_signing_request_wait_for_response(pubkey, auth_data) else {
+            let Ok(Some(response)) =
+                state.send_signing_request_wait_for_response(pubkey, auth_data)
+            else {
                 return CKR_FUNCTION_FAILED as CK_RV;
             };
             response_ = Some(response);
         }
-        let Ok(mut state) = STATE.write() else  {
+        let Ok(mut state) = STATE.write() else {
             return CKR_GENERAL_ERROR as CK_RV;
         };
-        let Some( state) = state.as_mut() else {
+        let Some(state) = state.as_mut() else {
             return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
         };
-        let Some(mut session) = state.get_session_mut(&hSession) else{
+        let Some(mut session) = state.get_session_mut(&hSession) else {
             return CKR_SESSION_HANDLE_INVALID as CK_RV;
         };
         let response = response_.unwrap();
@@ -118,7 +120,9 @@ pub extern "C" fn C_Sign(
         signer.response = Some(response);
     }
 
-    let Some(response) = signer.response.as_ref() else {panic!("Shouldn't happen");};
+    let Some(response) = signer.response.as_ref() else {
+        panic!("Shouldn't happen");
+    };
     unsafe {
         *pulSignatureLen = response.len() as CK_ULONG;
     }

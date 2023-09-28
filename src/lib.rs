@@ -3,6 +3,7 @@ extern crate libc;
 pub(crate) mod communicator;
 pub(crate) mod configuration_provider;
 pub mod cryptoki;
+mod persistence;
 pub(crate) mod state;
 
 use crate::state::state::CryptokiState;
