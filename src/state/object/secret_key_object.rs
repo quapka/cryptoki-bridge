@@ -1,78 +1,98 @@
 use uuid::Uuid;
 
-use crate::cryptoki::bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL, CK_FALSE, CK_TRUE};
+use crate::cryptoki::bindings::{
+    CKA_CLASS, CKA_VALUE, CKO_SECRET_KEY, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE,
+};
 
-use super::{cryptoki_object::CryptokiObject, data_object::DataObject, template::Template};
+use super::{
+    cryptoki_object::{
+        AttributeMatcher, AttributeValidator, AttributeValue, Attributes, CryptokiObject,
+    },
+    template::Template,
+};
 
 // TODO: consider using bool at this lvl of abstraction
+#[derive(Clone)]
 pub(crate) struct SecretKeyObject {
     id: Uuid,
-    data: DataObject,
-    is_sensitive: CK_BBOOL,
-    supports_encryption: CK_BBOOL,
-    supports_decryption: CK_BBOOL,
-    supports_signatures: CK_BBOOL,
-    supports_verification: CK_BBOOL,
-    supports_wrapping: CK_BBOOL,
-    supports_unwrapping: CK_BBOOL,
-    is_exctractable: CK_BBOOL,
-    is_always_sensitive: CK_BBOOL,
-    is_never_exctractable: CK_BBOOL,
-    key_checksum: Vec<u8>,
-    only_wrap_with_trusted_key: CK_BBOOL,
-    is_key_trusted: CK_BBOOL,
-    wrap_template: Option<Template>,
-    unwrap_template: Option<Template>,
+    attributes: Attributes,
 }
 
+impl SecretKeyObject {
+    pub(crate) fn new() -> Self {
+        let mut object = Self {
+            id: Uuid::new_v4(),
+            attributes: Attributes::new(),
+        };
+        // TODO: check endianity
+        object.set_attribute(
+            CKA_CLASS as CK_ATTRIBUTE_TYPE,
+            (CKO_SECRET_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec(),
+        );
+        object
+    }
+}
 impl CryptokiObject for SecretKeyObject {
-    fn does_template_match(&self, template: &Template) -> bool {
-        self.data.does_template_match(template)
-        // TODO: apply other filters
+    fn from_parts(id: Uuid, attributes: Attributes) -> Self
+    where
+        Self: Sized,
+    {
+        assert!(attributes.validate_template_class(
+            &(CKO_SECRET_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
+        ));
+        Self { id, attributes }
+    }
+    fn store_value(&mut self, value: AttributeValue) -> Option<AttributeValue> {
+        self.attributes
+            .insert(CKA_VALUE as CK_ATTRIBUTE_TYPE, Some(value))
+            .and_then(|x| x)
     }
 
-    fn store_data(&mut self, data: Vec<u8>) {
-        self.data.store_data(data)
+    fn get_value(&self) -> Option<AttributeValue> {
+        self.get_attribute(CKA_VALUE as CK_ATTRIBUTE_TYPE)
+    }
+    fn set_attribute(
+        &mut self,
+        attribute_type: CK_ATTRIBUTE_TYPE,
+        value: AttributeValue,
+    ) -> Option<AttributeValue> {
+        self.attributes
+            .insert(attribute_type, Some(value))
+            .and_then(|x| x)
+    }
+    fn does_template_match(&self, template: &Template) -> bool {
+        self.attributes.do_attributes_match(template)
     }
 
     fn from_template(template: Template) -> Self
     where
         Self: Sized,
     {
-        let data = DataObject::from_template(template);
-        // todo: create from template
+        let attributes = template.into_attributes();
+        assert!(attributes.validate_template_class(
+            &(CKO_SECRET_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
+        ));
+
         Self {
             id: Uuid::new_v4(),
-            data,
-            is_sensitive: CK_FALSE as CK_BBOOL,
-            supports_encryption: CK_FALSE as CK_BBOOL,
-            supports_decryption: CK_FALSE as CK_BBOOL,
-            supports_signatures: CK_FALSE as CK_BBOOL,
-            supports_verification: CK_FALSE as CK_BBOOL,
-            supports_wrapping: CK_FALSE as CK_BBOOL,
-            supports_unwrapping: CK_FALSE as CK_BBOOL,
-            is_exctractable: CK_FALSE as CK_BBOOL,
-            is_always_sensitive: CK_TRUE as CK_BBOOL,
-            is_never_exctractable: CK_TRUE as CK_BBOOL,
-            key_checksum: vec![],
-            only_wrap_with_trusted_key: CK_FALSE as CK_BBOOL,
-            is_key_trusted: CK_FALSE as CK_BBOOL,
-            wrap_template: None,
-            unwrap_template: None,
+            attributes,
         }
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
-        // todo
-        None
-    }
-
-    fn get_data(&self) -> Vec<u8> {
-        self.data.get_data()
+        self.attributes.get(&attribute_type).and_then(|x| x.clone())
     }
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.id
+    }
+
+    fn into_attributes(self) -> Attributes {
+        self.attributes
+    }
+
+    fn get_attributes(&self) -> &Attributes {
+        &self.attributes
     }
 }
 

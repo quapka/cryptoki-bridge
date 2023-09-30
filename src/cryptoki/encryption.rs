@@ -50,7 +50,7 @@ pub extern "C" fn C_EncryptInit(
     let Some(key) = session.get_object(hKey) else {
         return CKR_KEY_HANDLE_INVALID as CK_RV;
     };
-    let key = key.get_data();
+    let key = key.get_value().unwrap();
     let key = GenericArray::clone_from_slice(&key[0..16]);
     let encryptor = Aes128::new(&key);
     session.set_encryptor(encryptor);

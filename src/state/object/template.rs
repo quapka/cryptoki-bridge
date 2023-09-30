@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::cryptoki::bindings::{CKA_CLASS, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL};
 
-use super::{attribute::Attribute, object_class::ObjectClass};
+use super::{attribute::Attribute, cryptoki_object::Attributes, object_class::ObjectClass};
 
 pub(crate) struct Template {
     attributes: HashMap<CK_ATTRIBUTE_TYPE, Option<Vec<u8>>>,
@@ -23,8 +23,10 @@ impl Template {
     }
 
     pub(crate) fn get_bool(&self, key: &CK_ATTRIBUTE_TYPE) -> Option<CK_BBOOL> {
-        let Some(Some(value)) = self.attributes.get(key) else {return None;};
-        let Some(&value) = value.get(0) else{
+        let Some(Some(value)) = self.attributes.get(key) else {
+            return None;
+        };
+        let Some(&value) = value.get(0) else {
             return None;
         };
         Some(value as CK_BBOOL)
@@ -35,8 +37,17 @@ impl Template {
     }
 
     pub(crate) fn get_class(&self) -> Option<ObjectClass> {
-        let Some(value) = self.get_value(&(CKA_CLASS as CK_ATTRIBUTE_TYPE)) else {return None;};
+        let Some(value) = self.get_value(&(CKA_CLASS as CK_ATTRIBUTE_TYPE)) else {
+            return None;
+        };
         ObjectClass::from_vec(&value)
+    }
+
+    pub(crate) fn into_attributes(self) -> Attributes {
+        self.attributes
+    }
+    pub(crate) fn get_attributes(&self) -> &Attributes {
+        &self.attributes
     }
 }
 

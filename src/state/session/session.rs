@@ -270,10 +270,12 @@ impl Session {
         &mut self,
         pubkey: GroupId,
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
-        let pubkey_object = PublicKeyObject::new(pubkey.clone());
+        let mut pubkey_object = PublicKeyObject::new();
+        pubkey_object.store_value(pubkey.clone());
         let pubkey_handle = self.create_object(Arc::new(pubkey_object));
 
-        let private_key = PrivateKeyObject::new(pubkey);
+        let mut private_key = PrivateKeyObject::new();
+        private_key.store_value(pubkey.clone());
         let private_key_handle = self.create_object(Arc::new(private_key));
         (private_key_handle, pubkey_handle)
     }

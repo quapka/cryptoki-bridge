@@ -33,7 +33,6 @@ pub(crate) struct CryptokiState {
     runtime: Runtime,
     slots: Slots,
     configuration: RootConfiguration,
-    cryptoki_repo: Arc<dyn CryptokiRepo>,
 }
 
 impl CryptokiState {
@@ -129,12 +128,11 @@ impl CryptokiState {
         cryptoki_repo: Arc<dyn CryptokiRepo>,
     ) -> Self {
         Self {
-            sessions: Sessions::new(cryptoki_repo.clone()),
+            sessions: Sessions::new(cryptoki_repo),
             communicator,
             runtime,
             slots: Slots::new(),
             configuration,
-            cryptoki_repo,
         }
     }
 
@@ -145,7 +143,7 @@ impl CryptokiState {
 
 fn ensure_file_structure() -> Result<(), ()> {
     let cryptoki_directory_path = get_cryptoki_path();
-    fs::create_dir(cryptoki_directory_path).unwrap();
+    fs::create_dir_all(cryptoki_directory_path).unwrap();
 
     Ok(())
 }

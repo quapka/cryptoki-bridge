@@ -82,7 +82,7 @@ pub extern "C" fn C_Sign(
     let mut signer = signer_.unwrap();
     if signer.response.is_none() {
         // response not stored from the previous call, send the request
-        let pubkey = signer.key.get_data();
+        let pubkey = signer.key.get_value().unwrap();
 
         let mut auth_data = Vec::with_capacity(ulDataLen as usize);
         unsafe {

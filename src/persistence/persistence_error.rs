@@ -5,7 +5,7 @@ use std::{
 
 #[derive(Debug)]
 pub enum PersistenceError {
-    SqliteError(sqlite::Error),
+    RusqliteError(rusqlite::Error),
 }
 
 impl Error for PersistenceError {}
@@ -16,8 +16,8 @@ impl Display for PersistenceError {
     }
 }
 
-impl From<sqlite::Error> for PersistenceError {
-    fn from(error: sqlite::Error) -> Self {
-        Self::SqliteError(error)
+impl From<rusqlite::Error> for PersistenceError {
+    fn from(value: rusqlite::Error) -> Self {
+        Self::RusqliteError(value)
     }
 }

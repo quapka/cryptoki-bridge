@@ -65,7 +65,7 @@ pub extern "C" fn C_GenerateKey(
     let mut object = SecretKeyObject::from_template(template);
 
     let key: [u8; 32] = OsRng.gen();
-    object.store_data(key.into());
+    object.store_value(key.into());
 
     let return_code = match state.get_session_mut(&hSession) {
         Some(mut session) => {

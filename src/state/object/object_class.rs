@@ -9,11 +9,12 @@ use crate::cryptoki::bindings::{
 use super::attribute::Attribute;
 
 #[derive(Eq, PartialEq)]
+#[repr(i32)]
 pub(crate) enum ObjectClass {
-    Data,
-    SecretKey,
-    PrivateKey,
-    PublicKey,
+    Data = 1,
+    SecretKey = 2,
+    PrivateKey = 3,
+    PublicKey = 4,
 }
 impl ObjectClass {
     pub(crate) fn from_vec(value: &[u8]) -> Option<Self> {
@@ -22,7 +23,8 @@ impl ObjectClass {
         }
 
         let mut cursor = Cursor::new(value);
-        let Ok(value) = cursor.read_u64::<LittleEndian>() else{ // TODO: get endianity programatically
+        let Ok(value) = cursor.read_u64::<LittleEndian>() else {
+            // TODO: get endianity programatically
             return None;
         };
         match value as u32 {

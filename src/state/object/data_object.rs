@@ -1,100 +1,81 @@
-use std::vec;
-
 use uuid::Uuid;
 
-use crate::cryptoki::bindings::{
-    CKA_COPYABLE, CKA_DESTROYABLE, CKA_LABEL, CKA_MODIFIABLE, CKA_PRIVATE, CKA_TOKEN,
-    CKA_UNIQUE_ID, CKA_VALUE, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL, CK_FALSE, CK_TRUE,
+use crate::{
+    cryptoki::bindings::{CKA_VALUE, CKO_DATA, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE},
+    state::object::cryptoki_object::AttributeValidator,
 };
 
-use super::{cryptoki_object::CryptokiObject, template::Template};
+use super::{
+    cryptoki_object::{AttributeMatcher, AttributeValue, Attributes, CryptokiObject},
+    template::Template,
+};
 
-#[derive(PartialEq, Eq, Hash, Default)]
+#[derive(PartialEq, Eq, Default, Clone)]
 pub(crate) struct DataObject {
     id: Uuid,
-    is_token: CK_BBOOL,
-    is_private: CK_BBOOL,
-    is_modifiable: CK_BBOOL,
-    label: Vec<u8>,
-    is_copyable: CK_BBOOL,
-    is_destroyable: CK_BBOOL,
-    unique_id: Vec<u8>,
-    data: Vec<u8>,
+    attributes: Attributes,
 }
-
+// TODO: this one should not exist
+impl DataObject {}
 impl CryptokiObject for DataObject {
+    fn from_parts(id: Uuid, attributes: Attributes) -> Self
+    where
+        Self: Sized,
+    {
+        assert!(attributes
+            .validate_template_class(&(CKO_DATA as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()));
+
+        Self { id, attributes }
+    }
     fn does_template_match(&self, template: &Template) -> bool {
-        // TODO: class
-        if let Some(label) = template.get_value(&(CKA_LABEL as CK_ATTRIBUTE_TYPE)) {
-            if label != self.label {
-                return false;
-            }
-        };
-
-        if let Some(unique_id) = template.get_value(&(CKA_UNIQUE_ID as CK_ATTRIBUTE_TYPE)) {
-            if unique_id != self.unique_id {
-                return false;
-            }
-        }
-        // TODO: apply other filters
-
-        true
+        self.attributes.do_attributes_match(template)
+    }
+    fn set_attribute(
+        &mut self,
+        attribute_type: CK_ATTRIBUTE_TYPE,
+        value: AttributeValue,
+    ) -> Option<AttributeValue> {
+        self.attributes
+            .insert(attribute_type, Some(value))
+            .and_then(|x| x)
     }
 
-    fn store_data(&mut self, data: Vec<u8>) {
-        self.data = data;
+    fn store_value(&mut self, value: AttributeValue) -> Option<AttributeValue> {
+        self.attributes
+            .insert(CKA_VALUE as CK_ATTRIBUTE_TYPE, Some(value))
+            .and_then(|x| x)
     }
 
+    fn get_value(&self) -> Option<AttributeValue> {
+        self.get_attribute(CKA_VALUE as CK_ATTRIBUTE_TYPE)
+    }
     fn from_template(template: Template) -> Self
     where
         Self: Sized,
     {
-        // TODO: check class
-        // if template.get(&(CKA_CLASS as u64)).unwrap() != CKO_DATA {
-        //     unimplemented!()
-        // }
+        let attributes = template.into_attributes();
+        assert!(attributes
+            .validate_template_class(&(CKO_DATA as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()));
+
         Self {
             id: Uuid::new_v4(),
-            is_token: template
-                .get_bool(&(CKA_TOKEN as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(CK_TRUE as u8),
-            is_private: template
-                .get_bool(&(CKA_PRIVATE as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(CK_TRUE as u8),
-            is_modifiable: template
-                .get_bool(&(CKA_MODIFIABLE as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(CK_FALSE as u8),
-            is_copyable: template
-                .get_bool(&(CKA_COPYABLE as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(CK_FALSE as u8),
-            is_destroyable: template
-                .get_bool(&(CKA_DESTROYABLE as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(CK_TRUE as u8),
-            label: template
-                .get_value(&(CKA_LABEL as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(vec![]),
-            unique_id: template
-                .get_value(&(CKA_UNIQUE_ID as CK_ATTRIBUTE_TYPE))
-                .unwrap_or(vec![]),
-            data: template
-                .get_value(&(CKA_VALUE as CK_ATTRIBUTE_TYPE))
-                .unwrap_or_default(),
+            attributes,
         }
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
-        match attribute_type as u32 {
-            CKA_VALUE => Some(self.data.clone()),
-            _ => None,
-        }
-    }
-
-    fn get_data(&self) -> Vec<u8> {
-        self.data.clone()
+        self.attributes.get(&attribute_type).and_then(|x| x.clone())
     }
 
     fn get_id(&self) -> &uuid::Uuid {
-        todo!()
+        &self.id
+    }
+
+    fn into_attributes(self) -> Attributes {
+        self.attributes
+    }
+    fn get_attributes(&self) -> &Attributes {
+        &self.attributes
     }
 }
 
