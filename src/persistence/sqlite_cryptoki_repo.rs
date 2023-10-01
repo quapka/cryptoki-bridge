@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use rusqlite::{named_params, Connection};
+use rusqlite::{named_params, Connection, OpenFlags};
 use uuid::Uuid;
 
 use crate::{
@@ -31,7 +31,10 @@ impl SqliteCryptokiRepo {
         static CRYPTOKI_BRIDGE_DB_FILE: &str = "cryptoki-bridge.db";
         let cryptoki_sqlite_db = cryptoki_directory.join(CRYPTOKI_BRIDGE_DB_FILE);
         let cryptoki_sqlite_db = cryptoki_sqlite_db.to_str().unwrap();
-        let connection = Arc::new(Mutex::new(Connection::open(cryptoki_sqlite_db).unwrap()));
+        let flags = OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE;
+        let connection = Arc::new(Mutex::new(
+            Connection::open_with_flags(cryptoki_sqlite_db, flags).unwrap(),
+        ));
         Self { connection }
     }
 
