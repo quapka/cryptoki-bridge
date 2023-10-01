@@ -1,4 +1,4 @@
-use std::{sync::Arc, vec::IntoIter};
+use std::{collections::HashMap, iter::Chain, sync::Arc, vec::IntoIter};
 
 use aes::Aes128;
 use dashmap::DashMap;
@@ -28,7 +28,8 @@ pub(crate) struct Session {
 
     object_search: Option<ObjectSearch>,
 
-    object_search_iterator: Option<IntoIter<CK_OBJECT_HANDLE>>,
+    // TODO: cast to into_iter
+    object_search_iterator: Option<Chain<IntoIter<CK_OBJECT_HANDLE>, IntoIter<CK_OBJECT_HANDLE>>>,
 
     // TODO: objects should be held by the token struct
     // TODO: also store token ID
@@ -43,6 +44,7 @@ pub(crate) struct Session {
     key_pair: Option<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE)>,
 
     cryptoki_repo: Arc<dyn CryptokiRepo>,
+    ephemeral_objects: HashMap<Uuid, Arc<dyn CryptokiObject>>,
 }
 
 struct HandleResolver {
@@ -117,6 +119,7 @@ impl Session {
             key_pair: None,
             cryptoki_repo,
             handle_resolver: HandleResolver::new(),
+            ephemeral_objects: HashMap::new(),
         };
 
         session.key_pair = Some(session.create_communicator_keypair(pubkey));
@@ -157,6 +160,12 @@ impl Session {
         self.handle_resolver.get_or_insert_object_handle(object_id)
     }
 
+    pub fn create_ephemeral_object(&mut self, object: Arc<dyn CryptokiObject>) -> CK_OBJECT_HANDLE {
+        let id = *object.get_id();
+        self.ephemeral_objects.insert(id, object);
+        self.handle_resolver.get_or_insert_object_handle(id)
+    }
+
     // TODO: custom error
     pub fn destroy_object(
         &mut self,
@@ -168,6 +177,10 @@ impl Session {
         else {
             return None;
         };
+        let destroyed_object = self.ephemeral_objects.remove(&object_id);
+        if destroyed_object.is_some() {
+            return destroyed_object;
+        }
         let destroyed_object = self.cryptoki_repo.destroy_object(object_id).unwrap();
         destroyed_object
     }
@@ -180,6 +193,10 @@ impl Session {
         let Some(object_id) = self.handle_resolver.get_object_id(object_handle) else {
             return None;
         };
+        let object = self.ephemeral_objects.get(&object_id);
+        if object.is_some() {
+            return object.cloned();
+        }
         self.cryptoki_repo.get_object(object_id.clone()).unwrap()
     }
 
@@ -193,6 +210,13 @@ impl Session {
             return vec![]; // TODO: return error
         };
         if self.object_search_iterator.is_none() {
+            let ephemeral_objects = self
+                .ephemeral_objects
+                .iter()
+                .filter(|(_, object)| object.does_template_match(object_search.get_template()))
+                .map(|(id, _)| self.handle_resolver.get_or_insert_object_handle(*id))
+                .collect::<Vec<CK_OBJECT_HANDLE>>()
+                .into_iter();
             self.object_search_iterator = Some(
                 self.cryptoki_repo
                     .get_objects(self.object_search.as_ref().unwrap())
@@ -203,17 +227,9 @@ impl Session {
                             .get_or_insert_object_handle(object.get_id().clone())
                     })
                     .collect::<Vec<CK_OBJECT_HANDLE>>()
-                    .into_iter(),
+                    .into_iter()
+                    .chain(ephemeral_objects),
             )
-
-            // self.objects
-            //     .iter()
-            //     .filter(|(_handle, object)| {
-            //         object.does_template_match(object_search.get_template())
-            //     })
-            //     .map(|(&handle, _)| handle)
-            //     .collect::<Vec<CK_OBJECT_HANDLE>>() // TODO: refactor, ineffective
-            //     .into_iter(),
         }
         self.object_search_iterator
             .as_mut()
@@ -272,11 +288,11 @@ impl Session {
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         let mut pubkey_object = PublicKeyObject::new();
         pubkey_object.store_value(pubkey.clone());
-        let pubkey_handle = self.create_object(Arc::new(pubkey_object));
+        let pubkey_handle = self.create_ephemeral_object(Arc::new(pubkey_object));
 
         let mut private_key = PrivateKeyObject::new();
         private_key.store_value(pubkey.clone());
-        let private_key_handle = self.create_object(Arc::new(private_key));
+        let private_key_handle = self.create_ephemeral_object(Arc::new(private_key));
         (private_key_handle, pubkey_handle)
     }
 }
