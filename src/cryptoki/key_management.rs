@@ -1,8 +1,16 @@
 use std::{
-    ptr,
+    os, ptr,
     sync::{Arc, RwLock},
+    vec,
 };
 
+use aes::{
+    cipher::{
+        block_padding::Pkcs7, generic_array::GenericArray, BlockDecryptMut, BlockEncryptMut,
+        KeyIvInit,
+    },
+    Aes128,
+};
 use rand::{rngs::OsRng, Rng};
 
 use crate::{
@@ -18,10 +26,13 @@ use crate::{
 
 use super::bindings::{
     CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_NOT_SUPPORTED,
-    CKR_GENERAL_ERROR, CKR_OK, CKR_SESSION_HANDLE_INVALID, CKR_TEMPLATE_INCOMPLETE, CK_ATTRIBUTE,
-    CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
-    CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_OK, CKR_SESSION_HANDLE_INVALID,
+    CKR_TEMPLATE_INCOMPLETE, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR,
+    CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
 };
+
+type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
+type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 
 /// Generates a secret key or set of domain parameters, creating a new object
 ///
@@ -64,7 +75,7 @@ pub extern "C" fn C_GenerateKey(
     let template = Template::from(template);
     let mut object = SecretKeyObject::from_template(template);
 
-    let key: [u8; 32] = OsRng.gen();
+    let key: [u8; 16] = OsRng.gen();
     object.store_value(key.into());
 
     let return_code = match state.get_session_mut(&hSession) {
@@ -145,18 +156,51 @@ pub extern "C" fn C_WrapKey(
     if pulWrappedKeyLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
+
+    let Ok(state) = STATE.read() else {
+        return CKR_GENERAL_ERROR as CK_RV;
+    };
+    let Some(state) = state.as_ref() else {
+        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
+    };
+
+    let Some(session) = state.get_session(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    };
+    let Some(wrapping_key) = session.get_object(hWrappingKey) else {
+        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    };
+    let Some(private_key) = session.get_object(hKey) else {
+        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    };
+    let private_key = private_key.get_value().unwrap();
+    let key = GenericArray::from_slice(&wrapping_key.get_value().unwrap()).to_owned();
+    let iv: [u8; 16] = OsRng.gen();
+    let mut buf: Vec<u8> = vec![0; private_key.len() + 16];
+    let pt_len = private_key.len();
+    buf[..pt_len].copy_from_slice(&private_key);
+
+    let ct = Aes128CbcEnc::new(&key.into(), &iv.into())
+        .encrypt_padded_mut::<Pkcs7>(&mut buf, pt_len)
+        .unwrap()
+        .to_vec();
+    // TODO: iv is not prepended to the ciphertext
+    let mut ciphertext = iv.to_vec();
+    ciphertext.extend(ct);
     unsafe {
-        *pulWrappedKeyLen = 8;
+        *pulWrappedKeyLen = ciphertext.len() as CK_ULONG;
     }
 
     if pWrappedKey.is_null() {
         return CKR_OK as CK_RV;
     }
-    let key_handle = hKey.to_le_bytes();
+
     unsafe {
-        ptr::copy(key_handle.as_ptr(), pWrappedKey, key_handle.len());
+        ptr::copy(ciphertext.as_ptr(), pWrappedKey, ciphertext.len());
     }
 
+    // TODO: either buffer ciphertext length or only precompute it if pWrappedKey is null
+    // now encryption is done twice
     CKR_OK as CK_RV
 }
 
@@ -188,9 +232,44 @@ pub extern "C" fn C_UnwrapKey(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
+    let Ok(mut state) = STATE.write() else {
+        return CKR_GENERAL_ERROR as CK_RV;
+    };
+    let Some(state) = state.as_mut() else {
+        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
+    };
+
+    let Some(mut session) = state.get_session_mut(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    };
+    let Some(unwrapping_key) = session.get_object(hUnwrappingKey) else {
+        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    };
+
+    let key = GenericArray::from_slice(&unwrapping_key.get_value().unwrap()).to_owned();
+    let mut buf: Vec<u8> = vec![0; (ulWrappedKeyLen - 16) as usize];
+    let mut iv = [0u8; 16];
     unsafe {
-        ptr::copy(pWrappedKey, phKey as *mut u8, ulWrappedKeyLen as usize);
+        ptr::copy(pWrappedKey, iv.as_mut_ptr(), 16 as usize);
+        ptr::copy(
+            pWrappedKey.add(16),
+            buf.as_mut_ptr(),
+            (ulWrappedKeyLen - 16) as usize,
+        );
+        buf.set_len((ulWrappedKeyLen - 16) as usize);
     }
 
+    let pt: Vec<u8> = Aes128CbcDec::new(&key.into(), &iv.into())
+        .decrypt_padded_mut::<Pkcs7>(&mut buf)
+        .unwrap()
+        .to_vec();
+
+    // TODO: create from template
+    let mut private_key_object = PrivateKeyObject::new();
+    private_key_object.store_value(pt);
+    let handle = session.create_ephemeral_object(Arc::new(private_key_object));
+    unsafe {
+        *phKey = handle;
+    }
     CKR_OK as CK_RV
 }
