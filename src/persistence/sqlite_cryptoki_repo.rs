@@ -31,8 +31,7 @@ impl SqliteCryptokiRepo {
         static CRYPTOKI_BRIDGE_DB_FILE: &str = "cryptoki-bridge.db";
         let cryptoki_sqlite_db = cryptoki_directory.join(CRYPTOKI_BRIDGE_DB_FILE);
         let cryptoki_sqlite_db = cryptoki_sqlite_db.to_str().unwrap();
-        // TODO: use cryptoki_sqlite_db
-        let connection = Arc::new(Mutex::new(Connection::open_in_memory().unwrap()));
+        let connection = Arc::new(Mutex::new(Connection::open(cryptoki_sqlite_db).unwrap()));
         Self { connection }
     }
 
