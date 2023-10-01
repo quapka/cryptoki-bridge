@@ -116,7 +116,8 @@ jobs:
       - name: set authorized keys
         if: ${{ matrix.target == 'Linux' }}
         run: |
-          mkdir ~/.ssh/
+          mkdir --parents ~/.ssh/
+          mkdir ~/.cryptoki-bridge # TODO: investigate why we need this call, most likely fs::create_dir_all doesn't wait for OS to create dir
           ssh-keygen -D $PKCS11SPY_LIB -e > ~/.ssh/authorized_keys
 
       - name: start ssh server
