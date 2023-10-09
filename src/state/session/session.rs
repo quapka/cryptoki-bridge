@@ -95,13 +95,18 @@ pub(crate) struct Signer {
     pub key: Arc<dyn CryptokiObject>,
     pub response: Option<AuthResponse>,
     pub task_id: Option<TaskId>,
+    pub auth_request_originator: Option<String>,
 }
 impl Signer {
-    pub(crate) fn new(key: Arc<dyn CryptokiObject>) -> Self {
+    pub(crate) fn new(
+        key: Arc<dyn CryptokiObject>,
+        auth_request_originator: Option<String>,
+    ) -> Self {
         Self {
             key,
             response: None,
             task_id: None,
+            auth_request_originator,
         }
     }
 }

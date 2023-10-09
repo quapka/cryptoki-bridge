@@ -1,3 +1,4 @@
+use core::fmt;
 use std::env;
 
 use serde::Deserialize;
@@ -23,14 +24,11 @@ impl ControllerConfiguration {
     }
 
     fn fetch_data(&self) -> Result<InterfaceConfiguration, ConfigurationProviderError> {
-        let is_interface_used_for_fido = env::var(IS_INTERFACE_USED_FOR_FIDO_ENV_NAME).is_ok();
-        let interface = if is_interface_used_for_fido {
-            "webauthn"
-        } else {
-            "cryptoki"
-        };
+        let effective_interface_type = EffectiveInterfaceType::from_environment();
+        let effective_interface_type = effective_interface_type.to_interface_string();
+
         let configuration: InterfaceConfiguration = reqwest::blocking::get(format!(
-            "http://www.localhost:{CONTROLLER_PORT}/{interface}/configuration"
+            "http://www.localhost:{CONTROLLER_PORT}/{effective_interface_type}/configuration"
         ))?
         .json()?;
         Ok(configuration)
@@ -66,4 +64,36 @@ impl ConfigurationProvider for ControllerConfiguration {
 #[derive(Deserialize)]
 struct CertificateResponse {
     certificate_path: Option<String>,
+}
+
+pub(crate) enum EffectiveInterfaceType {
+    WebAuthn,
+    Cryptoki,
+}
+
+impl EffectiveInterfaceType {
+    pub(crate) fn from_environment() -> Self {
+        let is_interface_used_for_fido = env::var(IS_INTERFACE_USED_FOR_FIDO_ENV_NAME).is_ok();
+        if is_interface_used_for_fido {
+            Self::WebAuthn
+        } else {
+            Self::Cryptoki
+        }
+    }
+
+    fn to_interface_string(&self) -> &str {
+        match self {
+            Self::WebAuthn => "webauthn",
+            Self::Cryptoki => "cryptoki",
+        }
+    }
+}
+
+impl fmt::Display for EffectiveInterfaceType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WebAuthn => write!(f, "WebAuthn"),
+            Self::Cryptoki => write!(f, "Cryptoki"),
+        }
+    }
 }

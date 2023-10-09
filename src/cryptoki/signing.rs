@@ -1,12 +1,17 @@
 use std::ptr;
 
-use crate::{state::session::session::Signer, STATE};
+use crate::{
+    state::{object::template::Template, session::session::Signer},
+    STATE,
+};
+const CKA_REQUEST_ORIGINATOR: CK_ATTRIBUTE_TYPE =
+    (CKA_VENDOR_DEFINED as CK_ATTRIBUTE_TYPE) | 0x000000000000abcd;
 
 use super::bindings::{
-    CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED, CKR_GENERAL_ERROR,
-    CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID,
-    CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG,
-    CK_ULONG_PTR,
+    CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
+    CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
+    CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
+    CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
 };
 
 /// Initializes a signature operation, where the signature is an appendix to the data
@@ -35,8 +40,23 @@ pub extern "C" fn C_SignInit(
     let Some(signing_key) = session.get_object(hKey) else {
         return CKR_OBJECT_HANDLE_INVALID as CK_RV;
     };
+    let mechanism = unsafe { *pMechanism };
+    let mut attributes: Vec<CK_ATTRIBUTE> = Vec::with_capacity(mechanism.ulParameterLen as usize);
+    unsafe {
+        ptr::copy(
+            mechanism.pParameter as CK_ATTRIBUTE_PTR,
+            attributes.as_mut_ptr(),
+            mechanism.ulParameterLen as usize,
+        );
+        attributes.set_len(mechanism.ulParameterLen as usize);
+    }
+    let template = Template::from(attributes);
+    let request_originator = template
+        .get_value(&(CKA_REQUEST_ORIGINATOR as CK_ATTRIBUTE_TYPE))
+        .map(|originator| String::from_utf8(originator).ok())
+        .and_then(|x| x);
 
-    session.set_signer(Signer::new(signing_key));
+    session.set_signer(Signer::new(signing_key, request_originator));
 
     CKR_OK as CK_RV
 }
@@ -99,9 +119,11 @@ pub extern "C" fn C_Sign(
                 return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
             };
 
-            let Ok(Some(response)) =
-                state.send_signing_request_wait_for_response(pubkey, auth_data)
-            else {
+            let Ok(Some(response)) = state.send_signing_request_wait_for_response(
+                pubkey,
+                auth_data,
+                signer.auth_request_originator,
+            ) else {
                 return CKR_FUNCTION_FAILED as CK_RV;
             };
             response_ = Some(response);

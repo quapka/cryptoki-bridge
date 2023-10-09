@@ -23,6 +23,7 @@ pub(crate) trait Communicator: Send + Sync {
         &mut self,
         group_id: GroupId,
         data: RequestData,
+        request_originator: Option<String>,
     ) -> Result<TaskId, CommunicatorError>;
 
     async fn get_auth_response(

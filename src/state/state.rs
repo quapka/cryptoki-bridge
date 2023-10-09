@@ -75,17 +75,24 @@ impl CryptokiState {
         &mut self,
         group_id: GroupId,
         data: RequestData,
+        request_originator: Option<String>,
     ) -> Result<TaskId, CommunicatorError> {
-        self.communicator.send_auth_request(group_id, data).await
+        self.communicator
+            .send_auth_request(group_id, data, request_originator)
+            .await
     }
 
     pub(crate) fn send_auth_request_blocking(
         &mut self,
         group_id: GroupId,
         data: RequestData,
+        request_originator: Option<String>,
     ) -> Result<TaskId, CommunicatorError> {
-        self.runtime
-            .block_on(async { self.communicator.send_auth_request(group_id, data).await })
+        self.runtime.block_on(async {
+            self.communicator
+                .send_auth_request(group_id, data, request_originator)
+                .await
+        })
     }
 
     pub(crate) async fn get_auth_response(
@@ -106,9 +113,13 @@ impl CryptokiState {
         &mut self,
         group_id: GroupId,
         data: RequestData,
+        request_originator: Option<String>,
     ) -> Result<Option<TaskId>, CommunicatorError> {
         self.runtime.block_on(async {
-            let task_id = self.communicator.send_auth_request(group_id, data).await?;
+            let task_id = self
+                .communicator
+                .send_auth_request(group_id, data, request_originator)
+                .await?;
             self.communicator.get_auth_response(task_id).await
         })
     }

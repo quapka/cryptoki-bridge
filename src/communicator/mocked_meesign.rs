@@ -52,6 +52,7 @@ impl Communicator for MockedMeesign {
         &mut self,
         _group_id: GroupId,
         data: RequestData,
+        _request_originator: Option<String>,
     ) -> Result<TaskId, CommunicatorError> {
         let (signature, _) = self.private_key.sign_prehash(&data)?;
         self.signature = Some(signature.to_vec());
