@@ -4,20 +4,19 @@ use rand::{rngs::OsRng, Rng};
 
 use super::{
     bindings::{
-        CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED,
-        CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_OK,
-        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR,
-        CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_OK, CK_ATTRIBUTE_PTR,
+        CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
+        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     internals::encryption::{decrypt, destructure_iv_ciphertext, encrypt},
     utils::FromPointer,
 };
-use crate::{
-    state::object::{
+use crate::state::{
+    object::{
         cryptoki_object::CryptokiObject, private_key_object::PrivateKeyObject,
         secret_key_object::SecretKeyObject, template::Template,
     },
-    STATE,
+    StateAccessor,
 };
 
 pub(crate) type Aes128CbcEnc = cbc::Encryptor<aes::Aes128>;
@@ -45,12 +44,6 @@ pub(crate) fn C_GenerateKey(
     if pMechanism.is_null() || pTemplate.is_null() || phKey.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
 
     let mechanism = unsafe { *pMechanism };
     // todo: implement others
@@ -64,16 +57,14 @@ pub(crate) fn C_GenerateKey(
     let key: [u8; 16] = OsRng.gen();
     object.store_value(key.into());
 
-    let return_code = match state.get_session_mut(&hSession) {
-        Some(mut session) => {
-            let handle = session.create_object(Arc::new(object));
-            unsafe { *phKey = handle };
-            CKR_OK as CK_RV
-        }
-        None => CKR_SESSION_HANDLE_INVALID as CK_RV,
+    let state_accessor = StateAccessor::new();
+    let object_handle = match state_accessor.create_object(&hSession, Arc::new(object)) {
+        Ok(handle) => handle,
+        Err(err) => err.into_ck_rv(),
     };
+    unsafe { *phKey = object_handle };
 
-    return_code
+    CKR_OK as CK_RV
 }
 
 /// Generates a public/private key pair, creating new key objects
@@ -99,21 +90,16 @@ pub(crate) fn C_GenerateKeyPair(
     phPublicKey: CK_OBJECT_HANDLE_PTR,
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
-    let Ok(state) = STATE.read() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_ref() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
     };
 
-    let Some(session) = state.get_session(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    unsafe {
+        *phPublicKey = pubkey_handle;
+        *phPrivateKey = private_key_handle;
     };
-    let (private_key_handle, pubkey_handle) = session.get_keypair();
-
-    unsafe { *phPublicKey = pubkey_handle };
-
-    unsafe { *phPrivateKey = private_key_handle };
 
     CKR_OK as CK_RV
 }
@@ -140,22 +126,14 @@ pub(crate) fn C_WrapKey(
     if pulWrappedKeyLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-
-    let Ok(state) = STATE.read() else {
-        return CKR_GENERAL_ERROR as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let wrapping_key = match state_accessor.get_object(&hSession, &hWrappingKey) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
     };
-    let Some(state) = state.as_ref() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(session) = state.get_session(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-    let Some(wrapping_key) = session.get_object(hWrappingKey) else {
-        return CKR_KEY_HANDLE_INVALID as CK_RV;
-    };
-    let Some(private_key) = session.get_object(hKey) else {
-        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    let private_key = match state_accessor.get_object(&hSession, &hKey) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
     };
     let private_key = private_key.get_value().unwrap();
     let key = &wrapping_key.get_value().unwrap();
@@ -210,18 +188,10 @@ pub(crate) fn C_UnwrapKey(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(mut session) = state.get_session_mut(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-    let Some(unwrapping_key) = session.get_object(hUnwrappingKey) else {
-        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let unwrapping_key = match state_accessor.get_object(&hSession, &hUnwrappingKey) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
     };
 
     let key = unwrapping_key.get_value().unwrap();
@@ -233,7 +203,12 @@ pub(crate) fn C_UnwrapKey(
     // TODO: create from template
     let mut private_key_object = PrivateKeyObject::new();
     private_key_object.store_value(plaintext);
-    let handle = session.create_ephemeral_object(Arc::new(private_key_object));
+
+    let handle =
+        match state_accessor.create_ephemeral_object(&hSession, Arc::new(private_key_object)) {
+            Ok(val) => val,
+            Err(err) => return err.into_ck_rv(),
+        };
     unsafe {
         *phKey = handle;
     }

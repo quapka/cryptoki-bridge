@@ -5,7 +5,7 @@ pub(crate) mod token;
 
 use crate::{
     communicator::{
-        self, communicator_error::CommunicatorError, group::Group, meesign::Meesign, AuthResponse,
+        communicator_error::CommunicatorError, group::Group, meesign::Meesign, AuthResponse,
         Communicator, GroupId, RequestData, TaskId,
     },
     configuration_provider::{
@@ -20,14 +20,9 @@ use crate::{
     COMMUNICATOR, CONFIGURATION, RUNTIME, SESSIONS, SLOTS,
 };
 use aes::Aes128;
-use cbc::Encryptor;
 use home::home_dir;
 use openssl::hash::Hasher;
-use std::{
-    fs,
-    path::PathBuf,
-    sync::{Arc, RwLockReadGuard},
-};
+use std::{fs, path::PathBuf, sync::Arc};
 use tokio::runtime::Runtime;
 use tonic::transport::Certificate;
 
@@ -428,6 +423,20 @@ impl StateAccessor {
         Ok(session.create_object(object))
     }
 
+    pub(crate) fn create_ephemeral_object(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        object: Arc<dyn CryptokiObject>,
+    ) -> Result<CK_OBJECT_HANDLE, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        Ok(session.create_ephemeral_object(object))
+    }
+
     pub(crate) fn destroy_object(
         &self,
         session_handle: &CK_SESSION_HANDLE,
@@ -470,6 +479,19 @@ impl StateAccessor {
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         session.reset_object_search();
         Ok(())
+    }
+
+    pub(crate) fn get_keypair(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+    ) -> Result<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        Ok(session.get_keypair())
     }
     pub(crate) fn get_filtered_handles(
         &self,
