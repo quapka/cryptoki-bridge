@@ -61,6 +61,7 @@ pub(crate) fn C_Digest(
     pDigest: CK_BYTE_PTR,
     pulDigestLen: CK_ULONG_PTR,
 ) -> CK_RV {
+    // TODO: cache hasher output
     let state_accessor = StateAccessor::new();
     let mut hasher = match state_accessor.get_hasher(&hSession) {
         Ok(hasher) => hasher,

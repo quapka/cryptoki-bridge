@@ -351,15 +351,13 @@ impl StateAccessor {
         &self,
         session_handle: &CK_OBJECT_HANDLE,
     ) -> Result<Hasher, CryptokiError> {
-        let mut sessions = SESSIONS.write()?;
+        let sessions = SESSIONS.read()?;
         let session = sessions
-            .as_mut()
+            .as_ref()
             .ok_or(CryptokiError::CryptokiNotInitialized)?
-            .get_session_mut(session_handle)
+            .get_session(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
-        session
-            .get_hasher()
-            .ok_or(CryptokiError::OperationNotInitialized)
+        session.get_hasher().ok_or(CryptokiError::FunctionFailed)
     }
 
     pub(crate) fn get_groups_blocking(&self) -> Result<Vec<Group>, CryptokiError> {

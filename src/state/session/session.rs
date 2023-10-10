@@ -131,8 +131,8 @@ impl Session {
     pub fn get_keypair(&self) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         self.key_pair.unwrap()
     }
-    pub fn get_hasher(&mut self) -> Option<Hasher> {
-        self.hasher.take()
+    pub fn get_hasher(&self) -> Option<Hasher> {
+        self.hasher.clone()
     }
 
     pub fn set_hasher(&mut self, hasher: Hasher) {
