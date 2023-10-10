@@ -10,7 +10,7 @@ pub(crate) mod state;
 use crate::{
     communicator::Communicator,
     configuration_provider::root_configuration::RootConfiguration,
-    state::{session::sessions::Sessions, slots::Slots, CryptokiState},
+    state::{session::sessions::Sessions, slots::Slots},
 };
 use lazy_static::lazy_static;
 use std::sync::{Mutex, RwLock};
