@@ -34,7 +34,7 @@ use tonic::transport::Certificate;
 use session::{session::Session, sessions::Sessions};
 use slots::{Slots, TokenStore};
 
-use self::object::cryptoki_object::CryptokiObject;
+use self::object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch};
 
 pub(crate) struct CryptokiState {
     sessions: Sessions,
@@ -412,6 +412,77 @@ impl StateAccessor {
             .ok_or(CryptokiError::CryptokiNotInitialized)?;
         sessions.close_session(session_handle);
         Ok(())
+    }
+
+    pub(crate) fn create_object(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        object: Arc<dyn CryptokiObject>,
+    ) -> Result<CK_OBJECT_HANDLE, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        Ok(session.create_object(object))
+    }
+
+    pub(crate) fn destroy_object(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        object_handle: &CK_OBJECT_HANDLE,
+    ) -> Result<Arc<dyn CryptokiObject>, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session
+            .destroy_object(object_handle)
+            .ok_or(CryptokiError::ObjectHandleInvalid)
+    }
+
+    pub(crate) fn init_object_search(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        template: ObjectSearch,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session.init_object_search(template);
+        Ok(())
+    }
+    pub(crate) fn reset_object_search(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session.reset_object_search();
+        Ok(())
+    }
+    pub(crate) fn get_filtered_handles(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        count: usize,
+    ) -> Result<Vec<CK_OBJECT_HANDLE>, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        Ok(session.get_filtered_handles(count))
     }
 
     #[cfg(not(feature = "mocked_meesign"))]

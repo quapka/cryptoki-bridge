@@ -1,11 +1,11 @@
 use std::{cmp::min, ptr};
 
-use crate::{
-    state::object::{
+use crate::state::{
+    object::{
         attribute::Attribute, cryptoki_object::CryptokiArc, object_search::ObjectSearch,
         template::Template,
     },
-    STATE,
+    StateAccessor,
 };
 
 use super::{
@@ -36,32 +36,21 @@ pub(crate) fn C_CreateObject(
     if pTemplate.is_null() || phObject.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
+    let state_accessor = StateAccessor::new();
     let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
     let template = Template::from(template);
     let Some(object): Option<CryptokiArc> = template.into() else {
         return CKR_TEMPLATE_INCOMPLETE as CK_RV;
     };
     let object = object.value;
-    let return_code = match state.get_session_mut(&hSession) {
-        Some(mut session) => {
-            let object_handle = session.create_object(object);
-            unsafe {
-                *phObject = object_handle;
-            }
-            CKR_OK as CK_RV
-        }
-        None => CKR_SESSION_HANDLE_INVALID as CK_RV,
+    let object_handle = match state_accessor.create_object(&hSession, object) {
+        Ok(handle) => handle,
+        Err(err) => err.into_ck_rv(),
     };
-
-    return_code
+    unsafe {
+        *phObject = object_handle;
+    }
+    CKR_OK as CK_RV
 }
 
 /// Destroys an object
@@ -72,20 +61,11 @@ pub(crate) fn C_CreateObject(
 /// * `hObject` - the object’s handle
 #[allow(non_snake_case)]
 pub(crate) fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE) -> CK_RV {
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
+    let state_accessor = StateAccessor::new();
 
-    let Some(mut session) = state.get_session_mut(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-
-    match session.destroy_object(&hObject) {
-        Some(_) => CKR_OK as CK_RV,
-        None => CKR_OBJECT_HANDLE_INVALID as CK_RV,
+    match state_accessor.destroy_object(&hSession, &hObject) {
+        Ok(_) => CKR_OK as CK_RV,
+        Err(err) => err.into_ck_rv(),
     }
 }
 
@@ -107,19 +87,10 @@ pub(crate) fn C_GetAttributeValue(
     if pTemplate.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-
-    let Ok(state) = STATE.read() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_ref() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(session) = state.get_session(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-    let Some(object) = session.get_object(hObject) else {
-        return CKR_OBJECT_HANDLE_INVALID as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let object = match state_accessor.get_object(&hSession, &hObject) {
+        Ok(object) => object,
+        Err(err) => return err.into_ck_rv(),
     };
 
     let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
@@ -171,25 +142,14 @@ pub(crate) fn C_FindObjectsInit(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
     let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
 
     let object_search = ObjectSearch::new(template.into());
-
-    let return_code = match state.get_session_mut(&hSession) {
-        Some(mut session) => {
-            session.init_object_search(object_search);
-            CKR_OK as CK_RV
-        }
-        None => CKR_SESSION_HANDLE_INVALID as CK_RV,
-    };
-    return_code
+    let state_accessor = StateAccessor::new();
+    if let Err(err) = state_accessor.init_object_search(&hSession, object_search) {
+        return err.into_ck_rv();
+    }
+    CKR_OK as CK_RV
 }
 
 /// Continues a search for token and session objects that match a template, obtaining additional object handles
@@ -210,17 +170,12 @@ pub(super) fn C_FindObjects(
     if phObject.is_null() || pulObjectCount.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-    let filtered_handles = match state.get_session_mut(&hSession) {
-        Some(mut session) => session.get_filtered_handles(ulMaxObjectCount as usize),
-        None => return CKR_SESSION_HANDLE_INVALID as CK_RV,
-    };
+    let state_accessor = StateAccessor::new();
+    let filtered_handles =
+        match state_accessor.get_filtered_handles(&hSession, ulMaxObjectCount as usize) {
+            Ok(handles) => handles,
+            Err(err) => return err.into_ck_rv(),
+        };
 
     let copy_count = min(ulMaxObjectCount as usize, filtered_handles.len());
     unsafe {
@@ -237,16 +192,9 @@ pub(super) fn C_FindObjects(
 /// * `hSession` - the session’s handle
 #[allow(non_snake_case)]
 pub(crate) fn C_FindObjectsFinal(hSession: CK_SESSION_HANDLE) -> CK_RV {
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    match state.get_session_mut(&hSession) {
-        Some(mut session) => session.reset_object_search(),
-        None => return CKR_SESSION_HANDLE_INVALID as CK_RV,
-    };
+    let state_accessor = StateAccessor::new();
+    if let Err(err) = state_accessor.reset_object_search(&hSession) {
+        return err.into_ck_rv();
+    }
     CKR_OK as CK_RV
 }
