@@ -48,10 +48,11 @@ mod implementation {
 /// #[no_mangle]
 /// #[allow(non_snake_case)]
 /// #[cfg(target_os = "windows")]
-/// pub extern "stdcall" fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
+/// pub extern "C" fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
 ///     implementation::C_Initialize(pInitArgs)
 /// }
 /// ```
+/// TODO: update wrapper.h for bindgen to generate correct extern modifiers
 macro_rules! cryptoki_function{
     ($function_name:ident($($parameter_name:ident : $parameter_type:ty),*)) => {
         #[no_mangle]
@@ -64,7 +65,7 @@ macro_rules! cryptoki_function{
         #[no_mangle]
         #[allow(non_snake_case)]
         #[cfg(target_os = "windows")]
-        pub extern "stdcall" fn $function_name($($parameter_name: $parameter_type),*) -> CK_RV {
+        pub extern "C" fn $function_name($($parameter_name: $parameter_type),*) -> CK_RV {
             implementation::$function_name($($parameter_name),*)
         }
     }
