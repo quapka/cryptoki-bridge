@@ -5,7 +5,7 @@ pub(crate) mod token;
 
 use crate::{
     communicator::{
-        communicator_error::CommunicatorError, group::Group, meesign::Meesign, AuthResponse,
+        self, communicator_error::CommunicatorError, group::Group, meesign::Meesign, AuthResponse,
         Communicator, GroupId, RequestData, TaskId,
     },
     configuration_provider::{
@@ -15,7 +15,7 @@ use crate::{
     cryptoki::bindings::{CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
     cryptoki_error::CryptokiError,
     persistence::{cryptoki_repo::CryptokiRepo, sqlite_cryptoki_repo::SqliteCryptokiRepo},
-    SESSIONS,
+    COMMUNICATOR, CONFIGURATION, RUNTIME, SESSIONS, SLOTS,
 };
 use aes::Aes128;
 use cbc::Encryptor;
@@ -155,7 +155,7 @@ impl CryptokiState {
     }
 }
 
-fn ensure_file_structure() -> Result<(), ()> {
+fn ensure_file_structure() -> Result<(), CryptokiError> {
     let cryptoki_directory_path = get_cryptoki_path();
     fs::create_dir_all(cryptoki_directory_path).unwrap();
 
@@ -259,7 +259,6 @@ impl StateAccessor {
 
     pub(crate) fn get_object(
         &self,
-
         session_handle: &CK_SESSION_HANDLE,
         object_handle: &CK_OBJECT_HANDLE,
     ) -> Result<Arc<dyn CryptokiObject>, CryptokiError> {
@@ -273,5 +272,69 @@ impl StateAccessor {
         session
             .get_object(*object_handle)
             .ok_or(CryptokiError::ObjectHandleInvalid)
+    }
+
+    pub(crate) fn finalize(&self) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        sessions
+            .as_mut()
+            .ok_or(CryptokiError::NotInitializedError)?
+            .close_sessions();
+        Ok(())
+    }
+
+    pub(crate) fn initialize_state(&self) -> Result<(), CryptokiError> {
+        ensure_file_structure()?;
+
+        let configuration = RootConfiguration::new()
+            .add_provider(Box::new(ControllerConfiguration::new()))
+            .add_provider(Box::new(EnvConfiguration::new()));
+
+        let runtime = Runtime::new().unwrap();
+
+        let cryptoki_repo = Arc::new(SqliteCryptokiRepo::new(get_cryptoki_path()));
+        cryptoki_repo
+            .create_tables()
+            .expect("Couldn't crate tables");
+        let communicator = self.get_communicator(&configuration, &runtime)?;
+        let _ = SESSIONS.write()?.insert(Sessions::new(cryptoki_repo));
+        let _ = SLOTS.write()?.insert(Slots::new());
+        let _ = CONFIGURATION.write()?.insert(configuration);
+        let _ = RUNTIME.write()?.insert(runtime);
+        let _ = COMMUNICATOR.write()?.insert(communicator);
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "mocked_meesign"))]
+    fn get_communicator(
+        &self,
+        configuration: &RootConfiguration,
+        runtime: &Runtime,
+    ) -> Result<Arc<dyn Communicator>, CryptokiError> {
+        let hostname = configuration
+            .get_communicator_url()
+            .unwrap()
+            .expect("Coudln't get communicator URL");
+        let certificate_path = configuration
+            .get_communicator_certificate_path()
+            .unwrap()
+            .expect("Couldn't get meesign CA certificate path");
+        let cert = Certificate::from_pem(std::fs::read(certificate_path).unwrap());
+
+        let meesign =
+            runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
+        Ok(Arc::new(meesign))
+    }
+
+    #[cfg(feature = "mocked_meesign")]
+    fn get_communicator(
+        &self,
+        _configuration: &RootConfiguration,
+        _runtime: &Runtime,
+    ) -> Result<Arc<dyn Communicator>, CryptokiError> {
+        use crate::communicator::mocked_meesign::MockedMeesign;
+        let meesign = MockedMeesign::new("testgrp".into());
+        Ok(Arc::new(meesign))
     }
 }

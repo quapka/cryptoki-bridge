@@ -3,13 +3,12 @@ use std::mem;
 use super::{
     api,
     bindings::{
-        CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_GENERAL_ERROR, CKR_HOST_MEMORY,
-        CKR_OK, CK_FUNCTION_LIST, CK_FUNCTION_LIST_PTR_PTR, CK_INFO, CK_INFO_PTR, CK_RV,
-        CK_VERSION, CK_VOID_PTR,
+        CKR_ARGUMENTS_BAD, CKR_HOST_MEMORY, CKR_OK, CK_FUNCTION_LIST, CK_FUNCTION_LIST_PTR_PTR,
+        CK_INFO, CK_INFO_PTR, CK_RV, CK_VERSION, CK_VOID_PTR,
     },
     unsupported,
 };
-use crate::{state::CryptokiState, STATE};
+use crate::state::StateAccessor;
 
 /// Initializes the Cryptoki library
 ///
@@ -19,10 +18,11 @@ use crate::{state::CryptokiState, STATE};
 #[allow(non_snake_case)]
 pub(crate) fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
     // TODO: check later if some actions are required
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let _ = state.insert(CryptokiState::default());
+
+    let state_accessor = StateAccessor::new();
+    if let Err(err) = state_accessor.initialize_state() {
+        return err.into_ck_rv();
+    }
     CKR_OK as CK_RV
 }
 
@@ -37,14 +37,10 @@ pub(crate) fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
     if !pReserved.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    state.finalize();
+    let state_accessor = StateAccessor::new();
+    if let Err(err) = state_accessor.finalize() {
+        return err.into_ck_rv();
+    }
 
     CKR_OK as CK_RV
 }
