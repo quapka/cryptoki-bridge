@@ -81,7 +81,8 @@ pub(super) fn C_Sign(
         Ok(val) => val,
         Err(err) => return err.into_ck_rv(),
     };
-    if signer.response.is_none() {
+    let mut cached_response = signer.response.clone();
+    if cached_response.is_none() {
         // response not stored from the previous call, send the request
         let pubkey = signer.key.get_value().unwrap();
 
@@ -98,9 +99,10 @@ pub(super) fn C_Sign(
         if let Err(err) = state_accessor.store_signing_response(&hSession, response.clone()) {
             return err.into_ck_rv();
         }
+        cached_response = Some(response);
     }
 
-    let response = signer.response.as_ref().unwrap();
+    let response = cached_response.unwrap();
     unsafe {
         *pulSignatureLen = response.len() as CK_ULONG;
     }
