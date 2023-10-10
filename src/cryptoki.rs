@@ -1,4 +1,3 @@
-pub(crate) mod bindings;
 pub mod decryption;
 pub mod encryption;
 pub mod general_purpose;
@@ -9,3 +8,10 @@ pub mod session_management;
 pub mod signing;
 pub mod slot_token;
 pub mod unsupported;
+pub(crate) mod bindings {
+    #![allow(non_upper_case_globals)]
+    #![allow(non_camel_case_types)]
+    #![allow(non_snake_case)]
+    #![allow(dead_code)]
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
