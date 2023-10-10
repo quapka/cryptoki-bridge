@@ -6,7 +6,7 @@ pub mod cryptoki;
 mod persistence;
 pub(crate) mod state;
 
-use crate::state::state::CryptokiState;
+use crate::state::CryptokiState;
 use lazy_static::lazy_static;
 use std::sync::RwLock;
 

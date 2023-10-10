@@ -9,7 +9,7 @@ use super::{
     },
     unsupported,
 };
-use crate::{state::state::CryptokiState, STATE};
+use crate::{state::CryptokiState, STATE};
 
 /// Initializes the Cryptoki library
 ///
