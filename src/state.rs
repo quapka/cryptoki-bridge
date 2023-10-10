@@ -12,7 +12,9 @@ use crate::{
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
         root_configuration::RootConfiguration, ConfigurationProvider,
     },
-    cryptoki::bindings::{CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
+    cryptoki::bindings::{
+        CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,
+    },
     cryptoki_error::CryptokiError,
     persistence::{cryptoki_repo::CryptokiRepo, sqlite_cryptoki_repo::SqliteCryptokiRepo},
     COMMUNICATOR, CONFIGURATION, RUNTIME, SESSIONS, SLOTS,
@@ -283,6 +285,31 @@ impl StateAccessor {
             .close_sessions();
         Ok(())
     }
+    pub(crate) fn get_token_info(
+        &self,
+        slot_id: &CK_SLOT_ID,
+    ) -> Result<CK_TOKEN_INFO, CryptokiError> {
+        let slots = SLOTS.read()?;
+        let toke_info = slots
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_token_info(slot_id)
+            .ok_or(CryptokiError::SlotIdInvalid)?;
+        Ok(toke_info)
+    }
+
+    pub(crate) fn get_slot_info(
+        &self,
+        slot_id: &CK_SLOT_ID,
+    ) -> Result<CK_SLOT_INFO, CryptokiError> {
+        let slots = SLOTS.read()?;
+        let slot_info = slots
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_slot_info(slot_id)
+            .ok_or(CryptokiError::SlotIdInvalid)?;
+        Ok(slot_info)
+    }
 
     pub(crate) fn initialize_state(&self) -> Result<(), CryptokiError> {
         ensure_file_structure()?;
@@ -302,7 +329,7 @@ impl StateAccessor {
         let _ = SLOTS.write()?.insert(Slots::new());
         let _ = CONFIGURATION.write()?.insert(configuration);
         let _ = RUNTIME.write()?.insert(runtime);
-        let _ = COMMUNICATOR.write()?.insert(communicator);
+        let _ = COMMUNICATOR.lock()?.insert(communicator);
 
         Ok(())
     }
@@ -337,12 +364,33 @@ impl StateAccessor {
             .ok_or(CryptokiError::OperationNotInitialized)
     }
 
+    pub(crate) fn get_groups_blocking(&self) -> Result<Vec<Group>, CryptokiError> {
+        let runtime = RUNTIME.read()?;
+        let runtime = runtime
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        let mut communicator = COMMUNICATOR.lock()?;
+        let communicator = communicator
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        let groups = runtime.block_on(async move { communicator.get_groups().await })?;
+        Ok(groups)
+    }
+
+    pub(crate) fn insert_token(&self, token: TokenStore) -> Result<CK_SLOT_ID, CryptokiError> {
+        let mut slots = SLOTS.write()?;
+        let slots = slots
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        Ok(slots.insert_token(token))
+    }
+
     #[cfg(not(feature = "mocked_meesign"))]
     fn get_communicator(
         &self,
         configuration: &RootConfiguration,
         runtime: &Runtime,
-    ) -> Result<Arc<dyn Communicator>, CryptokiError> {
+    ) -> Result<Box<dyn Communicator>, CryptokiError> {
         let hostname = configuration
             .get_communicator_url()
             .unwrap()
@@ -355,7 +403,7 @@ impl StateAccessor {
 
         let meesign =
             runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
-        Ok(Arc::new(meesign))
+        Ok(Box::new(meesign))
     }
 
     #[cfg(feature = "mocked_meesign")]
@@ -363,9 +411,9 @@ impl StateAccessor {
         &self,
         _configuration: &RootConfiguration,
         _runtime: &Runtime,
-    ) -> Result<Arc<dyn Communicator>, CryptokiError> {
+    ) -> Result<Box<dyn Communicator>, CryptokiError> {
         use crate::communicator::mocked_meesign::MockedMeesign;
         let meesign = MockedMeesign::new("testgrp".into());
-        Ok(Arc::new(meesign))
+        Ok(Box::new(meesign))
     }
 }

@@ -13,7 +13,7 @@ use crate::{
     state::{session::sessions::Sessions, slots::Slots, CryptokiState},
 };
 use lazy_static::lazy_static;
-use std::sync::{Arc, RwLock};
+use std::sync::{Mutex, RwLock};
 use tokio::runtime::Runtime;
 
 lazy_static! {
@@ -22,5 +22,5 @@ lazy_static! {
     pub(crate) static ref CONFIGURATION: RwLock<Option<RootConfiguration>> = RwLock::new(None);
     pub(crate) static ref SESSIONS: RwLock<Option<Sessions>> = RwLock::new(None);
     pub(crate) static ref RUNTIME: RwLock<Option<Runtime>> = RwLock::new(None);
-    pub(crate) static ref COMMUNICATOR: RwLock<Option<Arc<dyn Communicator>>> = RwLock::new(None);
+    pub(crate) static ref COMMUNICATOR: Mutex<Option<Box<dyn Communicator>>> = Mutex::new(None);
 }
