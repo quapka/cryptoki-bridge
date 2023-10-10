@@ -8,7 +8,7 @@ use crate::cryptoki::bindings::{
 #[derive(Debug)]
 pub(crate) enum CryptokiError {
     SynchronizationError,
-    NotInitializedError,
+    CryptokiNotInitialized,
     SessionHandleInvalid,
     InvalidArgument,
     FunctionNotSupported,
@@ -25,7 +25,7 @@ impl CryptokiError {
     pub(crate) fn into_ck_rv(self) -> CK_RV {
         match self {
             Self::SynchronizationError => CKR_GENERAL_ERROR as CK_RV,
-            Self::NotInitializedError => CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV,
+            Self::CryptokiNotInitialized => CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV,
             Self::SessionHandleInvalid => CKR_SESSION_HANDLE_INVALID as CK_RV,
             Self::InvalidArgument => CKR_ARGUMENTS_BAD as CK_RV,
             Self::FunctionNotSupported => CKR_FUNCTION_NOT_SUPPORTED as CK_RV,

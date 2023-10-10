@@ -1,15 +1,14 @@
 use std::ptr;
 
+use crate::state::StateAccessor;
+
 use super::{
     bindings::{
-        CKM_SHA256, CKM_SHA384, CKM_SHA512, CKM_SHA_1, CKR_ARGUMENTS_BAD,
-        CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED, CKR_GENERAL_ERROR, CKR_OK,
-        CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
-        CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKM_SHA256, CKM_SHA384, CKM_SHA512, CKM_SHA_1, CKR_ARGUMENTS_BAD, CKR_FUNCTION_FAILED,
+        CKR_OK, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     utils::FromPointer,
 };
-use crate::STATE;
 use openssl::hash::{Hasher, MessageDigest};
 
 /// Initializes a message-digesting operation
@@ -37,18 +36,11 @@ pub(crate) fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM
         return CKR_FUNCTION_FAILED as CK_RV;
     };
 
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    match state.get_session_mut(&hSession) {
-        Some(mut session_state) => session_state.set_hasher(hasher),
-        None => return CKR_SESSION_HANDLE_INVALID as CK_RV,
+    let state_accessor = StateAccessor::new();
+    if let Err(err) = state_accessor.set_hasher(&hSession, hasher) {
+        return err.into_ck_rv();
     }
+
     CKR_OK as CK_RV
 }
 
@@ -69,21 +61,11 @@ pub(crate) fn C_Digest(
     pDigest: CK_BYTE_PTR,
     pulDigestLen: CK_ULONG_PTR,
 ) -> CK_RV {
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let mut hasher = match state_accessor.get_hasher(&hSession) {
+        Ok(hasher) => hasher,
+        Err(err) => return err.into_ck_rv(),
     };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(mut session) = state.get_session_mut(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-    let hasher = session.get_hasher_mut();
-    if hasher.is_none() {
-        return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
-    }
-    let hasher = hasher.unwrap();
 
     let data_buffer = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
 

@@ -20,6 +20,7 @@ use crate::{
 use aes::Aes128;
 use cbc::Encryptor;
 use home::home_dir;
+use openssl::hash::Hasher;
 use std::{
     fs,
     path::PathBuf,
@@ -232,12 +233,12 @@ impl StateAccessor {
         let sessions = SESSIONS.read()?;
         let session = sessions
             .as_ref()
-            .ok_or(CryptokiError::NotInitializedError)?
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         session
             .get_encryptor()
-            .ok_or(CryptokiError::NotInitializedError)
+            .ok_or(CryptokiError::CryptokiNotInitialized)
     }
 
     pub(crate) fn set_encryptor(
@@ -248,7 +249,7 @@ impl StateAccessor {
         let mut sessions = SESSIONS.write()?;
         let mut session = sessions
             .as_mut()
-            .ok_or(CryptokiError::NotInitializedError)?
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session_mut(session_handle);
         let session = session
             .as_mut()
@@ -265,7 +266,7 @@ impl StateAccessor {
         let sessions = SESSIONS.read()?;
         let session = sessions
             .as_ref()
-            .ok_or(CryptokiError::NotInitializedError)?
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
 
@@ -278,7 +279,7 @@ impl StateAccessor {
         let mut sessions = SESSIONS.write()?;
         sessions
             .as_mut()
-            .ok_or(CryptokiError::NotInitializedError)?
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
             .close_sessions();
         Ok(())
     }
@@ -304,6 +305,36 @@ impl StateAccessor {
         let _ = COMMUNICATOR.write()?.insert(communicator);
 
         Ok(())
+    }
+
+    pub(crate) fn set_hasher(
+        &self,
+        session: &CK_SESSION_HANDLE,
+        hashser: Hasher,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session.set_hasher(hashser);
+        Ok(())
+    }
+
+    pub(crate) fn get_hasher(
+        &self,
+        session_handle: &CK_OBJECT_HANDLE,
+    ) -> Result<Hasher, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session
+            .get_hasher()
+            .ok_or(CryptokiError::OperationNotInitialized)
     }
 
     #[cfg(not(feature = "mocked_meesign"))]
