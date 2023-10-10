@@ -5,14 +5,13 @@ use aes::{
     Aes128,
 };
 
-use crate::STATE;
+use crate::state::StateAccessor;
 
 use super::{
     bindings::{
-        CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_NOT_SUPPORTED,
-        CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_MECHANISM_INVALID, CKR_OK,
-        CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
-        CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID, CKR_OK,
+        CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG,
+        CK_ULONG_PTR,
     },
     utils::FromPointer,
 };
@@ -33,29 +32,24 @@ pub(crate) fn C_EncryptInit(
     if pMechanism.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
 
-    let Some(mut session) = state.get_session_mut(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
+    let state_accessor = StateAccessor::new();
     let mechanism = unsafe { *pMechanism };
     // todo: support other algos
     match mechanism.mechanism as u32 {
         CKM_AES_ECB => {}
         _ => return CKR_MECHANISM_INVALID as CK_RV,
     };
-    let Some(key) = session.get_object(hKey) else {
-        return CKR_KEY_HANDLE_INVALID as CK_RV;
+    let key = match state_accessor.get_object(&hSession, &hKey) {
+        Ok(key) => key,
+        Err(err) => return err.into_ck_rv(),
     };
     let key = key.get_value().unwrap();
     let key = GenericArray::clone_from_slice(&key[0..16]);
     let encryptor = Aes128::new(&key);
-    session.set_encryptor(encryptor);
+    if let Err(err) = state_accessor.set_encryptor(&hSession, encryptor) {
+        return err.into_ck_rv();
+    }
 
     CKR_OK as CK_RV
 }
@@ -80,21 +74,11 @@ pub(crate) fn C_Encrypt(
     if pData.is_null() || pulEncryptedDataLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(state) = STATE.read() else {
-        return CKR_GENERAL_ERROR as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let encryptor = match state_accessor.get_encryptor(&hSession) {
+        Ok(encryptor) => encryptor,
+        Err(err) => return err.into_ck_rv(),
     };
-    let Some(state) = state.as_ref() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(session) = state.get_session(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-
-    let Some(encryptor) = session.get_encryptor() else {
-        return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
-    };
-
     let data = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
     let mut cipher_length = 0;
     // TODO: check block length

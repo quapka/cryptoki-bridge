@@ -12,10 +12,8 @@ use crate::{
     persistence::cryptoki_repo::CryptokiRepo,
     state::{
         object::{
-            cryptoki_object::{CryptokiArc, CryptokiObject},
-            object_search::ObjectSearch,
-            private_key_object::PrivateKeyObject,
-            public_key_object::PublicKeyObject,
+            cryptoki_object::CryptokiObject, object_search::ObjectSearch,
+            private_key_object::PrivateKeyObject, public_key_object::PublicKeyObject,
         },
         slots::TokenStore,
     },

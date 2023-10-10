@@ -12,20 +12,26 @@ use crate::{
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
         root_configuration::RootConfiguration, ConfigurationProvider,
     },
-    cryptoki::bindings::{CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
+    cryptoki::bindings::{CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_TOKEN_INFO},
+    cryptoki_error::CryptokiError,
     persistence::{cryptoki_repo::CryptokiRepo, sqlite_cryptoki_repo::SqliteCryptokiRepo},
+    SESSIONS,
 };
+use aes::Aes128;
+use cbc::Encryptor;
 use home::home_dir;
 use std::{
     fs,
     path::PathBuf,
-    sync::{Arc, RwLockReadGuard, RwLockWriteGuard},
+    sync::{Arc, RwLockReadGuard},
 };
 use tokio::runtime::Runtime;
 use tonic::transport::Certificate;
 
 use session::{session::Session, sessions::Sessions};
 use slots::{Slots, TokenStore};
+
+use self::object::cryptoki_object::CryptokiObject;
 
 pub(crate) struct CryptokiState {
     sessions: Sessions,
@@ -44,17 +50,14 @@ impl CryptokiState {
         self.sessions.close_session(session_handle)
     }
 
-    pub(crate) fn get_session(
-        &self,
-        session_handle: &CK_SESSION_HANDLE,
-    ) -> Option<RwLockReadGuard<Session>> {
+    pub(crate) fn get_session(&self, session_handle: &CK_SESSION_HANDLE) -> Option<&Session> {
         self.sessions.get_session(session_handle)
     }
 
     pub(crate) fn get_session_mut(
         &mut self,
         session_handle: &CK_SESSION_HANDLE,
-    ) -> Option<RwLockWriteGuard<Session>> {
+    ) -> Option<&mut Session> {
         self.sessions.get_session_mut(session_handle)
     }
 
@@ -212,5 +215,63 @@ impl Default for CryptokiState {
             .create_tables()
             .expect("Couldn't crate tables");
         Self::new(Box::new(meesign), runtime, configuration, cryptoki_repo)
+    }
+}
+
+pub(crate) struct StateAccessor {}
+
+impl StateAccessor {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+
+    pub(crate) fn get_encryptor(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+    ) -> Result<Aes128, CryptokiError> {
+        let sessions = SESSIONS.read()?;
+        let session = sessions
+            .as_ref()
+            .ok_or(CryptokiError::NotInitializedError)?
+            .get_session(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session
+            .get_encryptor()
+            .ok_or(CryptokiError::NotInitializedError)
+    }
+
+    pub(crate) fn set_encryptor(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        encryptor: Aes128,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let mut session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::NotInitializedError)?
+            .get_session_mut(session_handle);
+        let session = session
+            .as_mut()
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session.set_encryptor(encryptor);
+        Ok(())
+    }
+
+    pub(crate) fn get_object(
+        &self,
+
+        session_handle: &CK_SESSION_HANDLE,
+        object_handle: &CK_OBJECT_HANDLE,
+    ) -> Result<Arc<dyn CryptokiObject>, CryptokiError> {
+        let sessions = SESSIONS.read()?;
+        let session = sessions
+            .as_ref()
+            .ok_or(CryptokiError::NotInitializedError)?
+            .get_session(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+
+        session
+            .get_object(*object_handle)
+            .ok_or(CryptokiError::ObjectHandleInvalid)
     }
 }

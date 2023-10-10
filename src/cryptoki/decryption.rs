@@ -2,13 +2,12 @@ use std::ptr;
 
 use aes::cipher::{generic_array::GenericArray, BlockDecrypt};
 
-use crate::STATE;
+use crate::state::StateAccessor;
 
 use super::{
     bindings::{
-        CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_GENERAL_ERROR, CKR_OK,
-        CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
-        CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKR_ARGUMENTS_BAD, CKR_OK, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV,
+        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     encryption::C_EncryptInit,
     utils::FromPointer,
@@ -51,20 +50,12 @@ pub(crate) fn C_Decrypt(
     if pEncryptedData.is_null() || pulDataLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(state) = STATE.read() else {
-        return CKR_GENERAL_ERROR as CK_RV;
-    };
-    let Some(state) = state.as_ref() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-
-    let Some(session) = state.get_session(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let accessor = StateAccessor::new();
+    let encryptor = match accessor.get_encryptor(&hSession) {
+        Ok(encryptor) => encryptor,
+        Err(err) => return err.into_ck_rv(),
     };
 
-    let Some(encryptor) = session.get_encryptor() else {
-        return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
-    };
     let data = unsafe { Vec::from_pointer(pEncryptedData, ulEncryptedDataLen as usize) };
     let mut cipher_length = 0;
     // TODO: check block length

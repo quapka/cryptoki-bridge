@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use rand::{rngs::OsRng, Rng};
 
@@ -13,7 +10,7 @@ use crate::{
 use super::session::Session;
 
 pub(crate) struct Sessions {
-    sessions: HashMap<CK_SESSION_HANDLE, RwLock<Session>>,
+    sessions: HashMap<CK_SESSION_HANDLE, Session>,
     cryptoki_repo: Arc<dyn CryptokiRepo>,
 }
 
@@ -29,7 +26,7 @@ impl Sessions {
     }
 
     pub(crate) fn create_session(&mut self, token: TokenStore) -> CK_SESSION_HANDLE {
-        let new_session_state = RwLock::new(Session::new(token, self.cryptoki_repo.clone()));
+        let new_session_state = Session::new(token, self.cryptoki_repo.clone());
         let mut session_handle = self.generate_session_handle();
         while self.sessions.contains_key(&session_handle) {
             session_handle = self.generate_session_handle();
@@ -44,25 +41,22 @@ impl Sessions {
         self.sessions.shrink_to_fit();
     }
 
-    pub(crate) fn get_session(
-        &self,
-        session_handle: &CK_SESSION_HANDLE,
-    ) -> Option<RwLockReadGuard<Session>> {
+    pub(crate) fn get_session(&self, session_handle: &CK_SESSION_HANDLE) -> Option<&Session> {
         match self.sessions.get(session_handle) {
             None => None,
             // TODO: unrap
-            Some(session) => Some(session.read().unwrap()),
+            Some(session) => Some(session),
         }
     }
 
     pub(crate) fn get_session_mut(
         &mut self,
         session_handle: &CK_SESSION_HANDLE,
-    ) -> Option<RwLockWriteGuard<Session>> {
+    ) -> Option<&mut Session> {
         match self.sessions.get_mut(session_handle) {
             None => None,
             // TODO: unrap
-            Some(session) => Some(session.write().unwrap()),
+            Some(session) => Some(session),
         }
     }
 
