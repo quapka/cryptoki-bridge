@@ -8,11 +8,14 @@ use crate::{
     STATE,
 };
 
-use super::bindings::{
-    CKR_ARGUMENTS_BAD, CKR_ATTRIBUTE_TYPE_INVALID, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_GENERAL_ERROR,
-    CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_SESSION_HANDLE_INVALID, CKR_TEMPLATE_INCOMPLETE,
-    CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
-    CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+use super::{
+    bindings::{
+        CKR_ARGUMENTS_BAD, CKR_ATTRIBUTE_TYPE_INVALID, CKR_CRYPTOKI_NOT_INITIALIZED,
+        CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_SESSION_HANDLE_INVALID,
+        CKR_TEMPLATE_INCOMPLETE, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE,
+        CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    },
+    utils::FromPointer,
 };
 
 /// Creates an object
@@ -42,11 +45,7 @@ pub extern "C" fn C_CreateObject(
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let mut template: Vec<CK_ATTRIBUTE> = Vec::with_capacity(ulCount as usize);
-    unsafe {
-        ptr::copy(pTemplate, template.as_mut_ptr(), ulCount as usize);
-        template.set_len(ulCount as usize);
-    }
+    let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
     let template = Template::from(template);
     let Some(object): Option<CryptokiArc> = template.into() else {
         return CKR_TEMPLATE_INCOMPLETE as CK_RV;
@@ -126,11 +125,7 @@ pub extern "C" fn C_GetAttributeValue(
         return CKR_OBJECT_HANDLE_INVALID as CK_RV;
     };
 
-    let mut template: Vec<CK_ATTRIBUTE> = Vec::with_capacity(ulCount as usize);
-    unsafe {
-        ptr::copy(pTemplate, template.as_mut_ptr(), ulCount as usize);
-        template.set_len(ulCount as usize);
-    }
+    let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
     let template: Vec<Attribute> = template
         .into_iter()
         .map(|attribute| attribute.into())
@@ -187,11 +182,7 @@ pub extern "C" fn C_FindObjectsInit(
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let mut template: Vec<CK_ATTRIBUTE> = Vec::with_capacity(ulCount as usize);
-    unsafe {
-        ptr::copy(pTemplate, template.as_mut_ptr(), ulCount as usize);
-        template.set_len(ulCount as usize);
-    }
+    let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
 
     let object_search = ObjectSearch::new(template.into());
 

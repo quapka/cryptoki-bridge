@@ -1,10 +1,13 @@
 use std::ptr;
 
-use super::bindings::{
-    CKM_SHA256, CKM_SHA384, CKM_SHA512, CKM_SHA_1, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED,
-    CKR_FUNCTION_FAILED, CKR_GENERAL_ERROR, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
-    CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG,
-    CK_ULONG_PTR,
+use super::{
+    bindings::{
+        CKM_SHA256, CKM_SHA384, CKM_SHA512, CKM_SHA_1, CKR_ARGUMENTS_BAD,
+        CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED, CKR_GENERAL_ERROR, CKR_OK,
+        CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
+        CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    },
+    utils::FromPointer,
 };
 use crate::STATE;
 use openssl::hash::{Hasher, MessageDigest};
@@ -35,13 +38,13 @@ pub extern "C" fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHA
         return CKR_FUNCTION_FAILED as CK_RV;
     };
 
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
 
     let Some(state) = state.as_mut() else {
-            return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-        };
+        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
+    };
 
     match state.get_session_mut(&hSession) {
         Some(mut session_state) => session_state.set_hasher(hasher),
@@ -68,15 +71,15 @@ pub extern "C" fn C_Digest(
     pDigest: CK_BYTE_PTR,
     pulDigestLen: CK_ULONG_PTR,
 ) -> CK_RV {
-    let Ok( mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
     let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
-    let Some(mut session) =  state.get_session_mut(&hSession) else {
-         return CKR_SESSION_HANDLE_INVALID as CK_RV;
+    let Some(mut session) = state.get_session_mut(&hSession) else {
+        return CKR_SESSION_HANDLE_INVALID as CK_RV;
     };
     let hasher = session.get_hasher_mut();
     if hasher.is_none() {
@@ -84,12 +87,7 @@ pub extern "C" fn C_Digest(
     }
     let hasher = hasher.unwrap();
 
-    // let data_buffer: &[u8] = unsafe { std::slice::from_raw_parts(pData, ulDataLen as usize) };
-    let mut data_buffer = Vec::with_capacity(ulDataLen as usize);
-    unsafe {
-        ptr::copy(pData, data_buffer.as_mut_ptr(), ulDataLen as usize);
-        data_buffer.set_len(ulDataLen as usize);
-    }
+    let data_buffer = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
 
     if hasher.update(&data_buffer).is_err() {
         // TODO: reset hasher state

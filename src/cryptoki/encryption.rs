@@ -7,11 +7,14 @@ use aes::{
 
 use crate::STATE;
 
-use super::bindings::{
-    CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_NOT_SUPPORTED,
-    CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_MECHANISM_INVALID, CKR_OK,
-    CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
-    CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+use super::{
+    bindings::{
+        CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_NOT_SUPPORTED,
+        CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_MECHANISM_INVALID, CKR_OK,
+        CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CK_BYTE_PTR, CK_MECHANISM_PTR,
+        CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    },
+    utils::FromPointer,
 };
 
 /// Initializes an encryption operation
@@ -94,11 +97,7 @@ pub extern "C" fn C_Encrypt(
         return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
     };
 
-    let mut data = Vec::with_capacity(ulDataLen as usize);
-    unsafe {
-        ptr::copy(pData, data.as_mut_ptr(), ulDataLen as usize);
-        data.set_len(ulDataLen as usize)
-    };
+    let data = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
     let mut cipher_length = 0;
     // TODO: check block length
     for block_i in 0..(data.len() / 16) {

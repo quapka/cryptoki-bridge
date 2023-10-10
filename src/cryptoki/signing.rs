@@ -7,11 +7,14 @@ use crate::{
 const CKA_REQUEST_ORIGINATOR: CK_ATTRIBUTE_TYPE =
     (CKA_VENDOR_DEFINED as CK_ATTRIBUTE_TYPE) | 0x000000000000abcd;
 
-use super::bindings::{
-    CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
-    CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
-    CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
-    CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+use super::{
+    bindings::{
+        CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
+        CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
+        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
+        CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    },
+    utils::FromPointer,
 };
 
 /// Initializes a signature operation, where the signature is an appendix to the data
@@ -41,15 +44,12 @@ pub extern "C" fn C_SignInit(
         return CKR_OBJECT_HANDLE_INVALID as CK_RV;
     };
     let mechanism = unsafe { *pMechanism };
-    let mut attributes: Vec<CK_ATTRIBUTE> = Vec::with_capacity(mechanism.ulParameterLen as usize);
-    unsafe {
-        ptr::copy(
+    let attributes = unsafe {
+        Vec::from_pointer(
             mechanism.pParameter as CK_ATTRIBUTE_PTR,
-            attributes.as_mut_ptr(),
             mechanism.ulParameterLen as usize,
-        );
-        attributes.set_len(mechanism.ulParameterLen as usize);
-    }
+        )
+    };
     let template = Template::from(attributes);
     let request_originator = template
         .get_value(&(CKA_REQUEST_ORIGINATOR as CK_ATTRIBUTE_TYPE))
@@ -104,11 +104,7 @@ pub extern "C" fn C_Sign(
         // response not stored from the previous call, send the request
         let pubkey = signer.key.get_value().unwrap();
 
-        let mut auth_data = Vec::with_capacity(ulDataLen as usize);
-        unsafe {
-            ptr::copy(pData, auth_data.as_mut_ptr(), ulDataLen as usize);
-            auth_data.set_len(ulDataLen as usize);
-        }
+        let auth_data = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
 
         let mut response_ = None;
         {

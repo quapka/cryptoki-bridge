@@ -8,6 +8,7 @@ pub mod session_management;
 pub mod signing;
 pub mod slot_token;
 pub mod unsupported;
+pub(crate) mod utils;
 pub(crate) mod bindings {
     #![allow(non_upper_case_globals)]
     #![allow(non_camel_case_types)]

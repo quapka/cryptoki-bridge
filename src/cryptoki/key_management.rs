@@ -5,11 +5,14 @@ use aes::cipher::{
 };
 use rand::{rngs::OsRng, Rng};
 
-use super::bindings::{
-    CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_NOT_SUPPORTED,
-    CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_OK, CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE,
-    CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
-    CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+use super::{
+    bindings::{
+        CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED,
+        CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_KEY_HANDLE_INVALID, CKR_OK,
+        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR,
+        CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+    },
+    utils::FromPointer,
 };
 use crate::{
     state::object::{
@@ -57,11 +60,7 @@ pub extern "C" fn C_GenerateKey(
     if mechanism.mechanism as u32 != CKM_AES_KEY_GEN {
         return CKR_FUNCTION_NOT_SUPPORTED as CK_RV;
     }
-    let mut template: Vec<CK_ATTRIBUTE> = Vec::with_capacity(ulCount as usize);
-    unsafe {
-        ptr::copy(pTemplate, template.as_mut_ptr(), ulCount as usize);
-        template.set_len(ulCount as usize);
-    }
+    let template = unsafe { Vec::from_pointer(pTemplate, ulCount as usize) };
     let template = Template::from(template);
     let mut object = SecretKeyObject::from_template(template);
 
