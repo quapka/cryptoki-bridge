@@ -9,7 +9,9 @@
 
 use super::bindings::*;
 
-/// Generates a function that returns CKR_FUNCTION_NOT_SUPPORTED as specified by PKCS#11 spec for unimplemented functions
+/// Generates two functions conditionally compiled for Win and Linux
+/// that return CKR_FUNCTION_NOT_SUPPORTED as specified
+/// by PKCS#11 spec for unimplemented functions
 ///
 /// # Arguments
 ///
@@ -18,19 +20,34 @@ use super::bindings::*;
 /// # Example
 ///
 /// ```no_run
-/// unsupported!(C_GetInfo(pInfo: CK_INFO_PTR));
+/// unsupported!(C_CloseAllSessions(slotID: CK_SLOT_ID));
 /// ```
+///
 /// evaluates to
+///
 /// ```no_run
 /// #[no_mangle]
-/// pub extern "C" fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
+/// #[cfg(target_os = "linux")]
+/// pub extern "C" fn C_CloseAllSessions(slotID: CK_SLOT_ID) -> CK_RV {
+///     CKR_FUNCTION_NOT_SUPPORTED as CK_RV
+/// }
+/// #[no_mangle]
+/// #[cfg(target_os = "windows")]
+/// pub extern "stdcall" fn C_CloseAllSessions(slotID: CK_SLOT_ID) -> CK_RV {
 ///     CKR_FUNCTION_NOT_SUPPORTED as CK_RV
 /// }
 /// ```
 macro_rules! unsupported{
     ($function_name:ident($($argument:tt)*))=>{
         #[no_mangle]
+        #[cfg(target_os = "linux")]
         pub extern "C" fn $function_name($($argument)*) -> CK_RV {
+            CKR_FUNCTION_NOT_SUPPORTED as CK_RV
+        }
+
+        #[no_mangle]
+        #[cfg(target_os = "windows")]
+        pub extern "stdcall" fn $function_name($($argument)*) -> CK_RV {
             CKR_FUNCTION_NOT_SUPPORTED as CK_RV
         }
     }

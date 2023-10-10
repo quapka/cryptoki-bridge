@@ -15,9 +15,8 @@ use super::bindings::{
 /// * `pApplication` - an application-defined pointer to be passed to the notification callback
 /// * `Notify` - the address of the notification callback function
 /// * `phSession` - points to the location that receives the handle for the new session
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_OpenSession(
+pub(crate) fn C_OpenSession(
     slotID: CK_SLOT_ID,
     flags: CK_FLAGS,
     pApplication: CK_VOID_PTR,
@@ -29,10 +28,10 @@ pub extern "C" fn C_OpenSession(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
-   };
-    let Some( state) = state.as_mut() else {
+    };
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
     let Some(token) = state.get_token(&slotID) else {
@@ -50,13 +49,12 @@ pub extern "C" fn C_OpenSession(
 /// # Arguments
 ///
 /// * `hSession` - the session’s handle
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
-    let Ok(mut state) = STATE.write() else  {
+pub(crate) fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
-    let Some( state) = state.as_mut() else {
+    let Some(state) = state.as_mut() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
     };
 
@@ -77,9 +75,8 @@ pub extern "C" fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
 /// `userType` - the user type
 /// `pPin` - points to the user’s PIN
 /// `ulPinLen` - the length of the PIN
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_Login(
+pub(crate) fn C_Login(
     hSession: CK_SESSION_HANDLE,
     userType: CK_USER_TYPE,
     pPin: CK_UTF8CHAR_PTR,
@@ -95,9 +92,8 @@ pub extern "C" fn C_Login(
 /// # Arguments
 ///
 /// * `hSession` - the session’s handle
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_Logout(hSession: CK_SESSION_HANDLE) -> CK_RV {
+pub(crate) fn C_Logout(hSession: CK_SESSION_HANDLE) -> CK_RV {
     // for now do nothing
     // TODO
     CKR_OK as CK_RV

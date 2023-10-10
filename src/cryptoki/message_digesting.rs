@@ -18,9 +18,8 @@ use openssl::hash::{Hasher, MessageDigest};
 ///
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the digesting mechanism
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM_PTR) -> CK_RV {
+pub(crate) fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM_PTR) -> CK_RV {
     if pMechanism.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -62,9 +61,8 @@ pub extern "C" fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHA
 /// * `ulDataLen` - the length of the data
 /// * `pDigest` - points to the location that receives the message digest
 /// * `pulDigestLen` - points to the location that holds the length of the message digest
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_Digest(
+pub(crate) fn C_Digest(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,

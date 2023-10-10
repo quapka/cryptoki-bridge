@@ -24,9 +24,8 @@ use super::{
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the encryption mechanism
 /// * `hKey` - the handle of the encryption key
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_EncryptInit(
+pub(crate) fn C_EncryptInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -70,9 +69,8 @@ pub extern "C" fn C_EncryptInit(
 /// * `ulDataLen` - the length in bytes of the data
 /// * `pEncryptedData` - points to the location that receives the encrypted data
 /// * `pulEncryptedDataLen` - points to the location that holds the length in bytes of the encrypted data
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_Encrypt(
+pub(crate) fn C_Encrypt(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,
@@ -132,15 +130,15 @@ pub extern "C" fn C_Encrypt(
 /// * `ulPartLen` - the length of the data part
 /// * `pEncryptedPart` - points to the location that receives the encrypted data part
 /// * `pulEncryptedPartLen` - points to the location that holds the length in bytes of the encrypted data part
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_EncryptUpdate(
+pub(crate) fn C_EncryptUpdate(
     hSession: CK_SESSION_HANDLE,
     pPart: CK_BYTE_PTR,
     ulPartLen: CK_ULONG,
     pEncryptedPart: CK_BYTE_PTR,
     pulEncryptedPartLen: CK_ULONG_PTR,
 ) -> CK_RV {
+    // TODO
     CKR_FUNCTION_NOT_SUPPORTED as CK_RV
 }
 
@@ -151,12 +149,12 @@ pub extern "C" fn C_EncryptUpdate(
 /// * `hSession` - the session’s handle
 /// * `pLastEncryptedPart` - points to the location that receives the last encrypted data part, if any
 /// * `pulLastEncryptedPartLen` - points to the location that holds the length of the last encrypted data part
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_EncryptFinal(
+pub(super) fn C_EncryptFinal(
     hSession: CK_SESSION_HANDLE,
     pLastEncryptedPart: CK_BYTE_PTR,
     pulLastEncryptedPartLen: CK_ULONG_PTR,
 ) -> CK_RV {
+    // TODO
     CKR_FUNCTION_NOT_SUPPORTED as CK_RV
 }

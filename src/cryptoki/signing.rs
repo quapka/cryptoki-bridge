@@ -11,7 +11,7 @@ use super::{
     bindings::{
         CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
         CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
-        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
+        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
         CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     utils::FromPointer,
@@ -24,9 +24,8 @@ use super::{
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the signature mechanism
 /// * `hKey` - handle of the signature key
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_SignInit(
+pub(super) fn C_SignInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -70,9 +69,8 @@ pub extern "C" fn C_SignInit(
 /// * `ulDataLen` - the length of the data
 /// * `pSignature` - points to the location that receives the signature
 /// * `pulSignatureLen` - points to the location that holds the length of the signature
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_Sign(
+pub(super) fn C_Sign(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,

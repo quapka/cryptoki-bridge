@@ -20,9 +20,8 @@ use super::bindings::{
 /// * `tokenPresent` - indicates whether the list obtained includes only those slots with a token present, or all slots
 /// * `pSlotList` - points to the buffer for the slot list
 /// * `pulCount` -  points to the location that receives the number of slots
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_GetSlotList(
+pub(crate) fn C_GetSlotList(
     _tokenPresent: CK_BBOOL,
     pSlotList: CK_SLOT_ID_PTR,
     pulCount: CK_ULONG_PTR,
@@ -30,7 +29,7 @@ pub extern "C" fn C_GetSlotList(
     if pulCount.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(mut state) = STATE.write() else  {
+    let Ok(mut state) = STATE.write() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
 
@@ -71,15 +70,14 @@ pub extern "C" fn C_GetSlotList(
 ///
 /// * `slotID` - the ID of the token’s slot
 /// * `pInfo` - points to the location that receives the token information
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
+pub(super) fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(state) = STATE.read() else  {
+    let Ok(state) = STATE.read() else {
         return CKR_GENERAL_ERROR as CK_RV;
-   };
+    };
 
     let Some(state) = state.deref() else {
         return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
@@ -92,13 +90,12 @@ pub extern "C" fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -
     CKR_OK as CK_RV
 }
 
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
+pub(super) fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let Ok(state) = STATE.read() else  {
+    let Ok(state) = STATE.read() else {
         return CKR_GENERAL_ERROR as CK_RV;
     };
     let Some(state) = state.deref() else {

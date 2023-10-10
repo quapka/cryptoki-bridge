@@ -34,9 +34,8 @@ pub(crate) const AES_IV_SIZE: usize = AES_BLOCK_SIZE;
 /// * `pTemplate` - points to the template for the new key or set of domain parameters
 /// * `ulCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the new key or set of domain parameters
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_GenerateKey(
+pub(crate) fn C_GenerateKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     pTemplate: CK_ATTRIBUTE_PTR,
@@ -89,9 +88,8 @@ pub extern "C" fn C_GenerateKey(
 /// * `ulPrivateKeyAttributeCount` - the number of attributes in the private-key template
 /// * `phPublicKey` - points to the location that receives the handle of the new public key
 /// * `phPrivateKey` - points to the location that receives the handle of the new private key
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_GenerateKeyPair(
+pub(crate) fn C_GenerateKeyPair(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     pPublicKeyTemplate: CK_ATTRIBUTE_PTR,
@@ -130,9 +128,8 @@ pub extern "C" fn C_GenerateKeyPair(
 /// * `hKey` - the handle of the key to be wrapped
 /// * `pWrappedKey` - points to the location that receives the wrapped key
 /// * `pulWrappedKeyLen` - points to the location that receives the length of the wrapped key
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_WrapKey(
+pub(crate) fn C_WrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hWrappingKey: CK_OBJECT_HANDLE,
@@ -198,9 +195,8 @@ pub extern "C" fn C_WrapKey(
 /// * `pTemplate` - points to the template for the new key
 /// * `ulAttributeCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the recovered key
-#[no_mangle]
 #[allow(non_snake_case)]
-pub extern "C" fn C_UnwrapKey(
+pub(crate) fn C_UnwrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hUnwrappingKey: CK_OBJECT_HANDLE,

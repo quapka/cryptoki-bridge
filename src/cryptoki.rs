@@ -1,3 +1,4 @@
+mod api;
 pub mod decryption;
 pub mod encryption;
 pub mod general_purpose;
