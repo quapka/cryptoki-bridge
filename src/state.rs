@@ -385,6 +385,35 @@ impl StateAccessor {
         Ok(slots.insert_token(token))
     }
 
+    pub(crate) fn create_session(
+        &self,
+        slot_id: &CK_SLOT_ID,
+    ) -> Result<CK_SESSION_HANDLE, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let sessions = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        let slots = SLOTS.read()?;
+        let token = slots
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_token(slot_id)
+            .ok_or(CryptokiError::SlotIdInvalid)?;
+        Ok(sessions.create_session(token))
+    }
+
+    pub(crate) fn close_session(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let sessions = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        sessions.close_session(session_handle);
+        Ok(())
+    }
+
     #[cfg(not(feature = "mocked_meesign"))]
     fn get_communicator(
         &self,
