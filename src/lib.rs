@@ -17,7 +17,6 @@ use std::sync::{Mutex, RwLock};
 use tokio::runtime::Runtime;
 
 lazy_static! {
-    pub(crate) static ref STATE: RwLock<Option<CryptokiState>> = RwLock::new(None);
     pub(crate) static ref SLOTS: RwLock<Option<Slots>> = RwLock::new(None);
     pub(crate) static ref CONFIGURATION: RwLock<Option<RootConfiguration>> = RwLock::new(None);
     pub(crate) static ref SESSIONS: RwLock<Option<Sessions>> = RwLock::new(None);

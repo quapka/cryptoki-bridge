@@ -1,18 +1,14 @@
 use std::ptr;
 
-use crate::{
-    state::{object::template::Template, session::session::Signer},
-    STATE,
-};
+use crate::state::{object::template::Template, session::session::Signer, StateAccessor};
 const CKA_REQUEST_ORIGINATOR: CK_ATTRIBUTE_TYPE =
     (CKA_VENDOR_DEFINED as CK_ATTRIBUTE_TYPE) | 0x000000000000abcd;
 
 use super::{
     bindings::{
-        CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
-        CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_OPERATION_NOT_INITIALIZED,
-        CKR_SESSION_HANDLE_INVALID, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
-        CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKA_VENDOR_DEFINED, CKR_ARGUMENTS_BAD, CKR_OK, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE,
+        CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG,
+        CK_ULONG_PTR,
     },
     utils::FromPointer,
 };
@@ -30,18 +26,12 @@ pub(super) fn C_SignInit(
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
 ) -> CK_RV {
-    let Ok(mut state) = STATE.write() else {
-        return CKR_GENERAL_ERROR as CK_RV;
+    let state_accessor = StateAccessor::new();
+    let signing_key = match state_accessor.get_object(&hSession, &hKey) {
+        Ok(key) => key,
+        Err(err) => return err.into_ck_rv(),
     };
-    let Some(state) = state.as_mut() else {
-        return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-    };
-    let Some(mut session) = state.get_session_mut(&hSession) else {
-        return CKR_SESSION_HANDLE_INVALID as CK_RV;
-    };
-    let Some(signing_key) = session.get_object(hKey) else {
-        return CKR_OBJECT_HANDLE_INVALID as CK_RV;
-    };
+
     let mechanism = unsafe { *pMechanism };
     let attributes = unsafe {
         Vec::from_pointer(
@@ -55,7 +45,11 @@ pub(super) fn C_SignInit(
         .map(|originator| String::from_utf8(originator).ok())
         .and_then(|x| x);
 
-    session.set_signer(Signer::new(signing_key, request_originator));
+    if let Err(err) =
+        state_accessor.set_signer(&hSession, Signer::new(signing_key, request_originator))
+    {
+        return err.into_ck_rv();
+    }
 
     CKR_OK as CK_RV
 }
@@ -81,64 +75,32 @@ pub(super) fn C_Sign(
     if pulSignatureLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let mut signer_ = None;
-    {
-        let Ok(state) = STATE.read() else {
-            return CKR_GENERAL_ERROR as CK_RV;
-        };
-        let Some(state) = state.as_ref() else {
-            return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-        };
-        let Some(session) = state.get_session(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
-        };
-        let Some(signer) = session.get_signer() else {
-            return CKR_OPERATION_NOT_INITIALIZED as CK_RV;
-        };
-        signer_ = Some(signer);
-    }
-    let mut signer = signer_.unwrap();
+    let state_accessor = StateAccessor::new();
+
+    let signer = match state_accessor.get_signer(&hSession) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
+    };
     if signer.response.is_none() {
         // response not stored from the previous call, send the request
         let pubkey = signer.key.get_value().unwrap();
 
         let auth_data = unsafe { Vec::from_pointer(pData, ulDataLen as usize) };
 
-        let mut response_ = None;
-        {
-            let Ok(mut state) = STATE.write() else {
-                return CKR_GENERAL_ERROR as CK_RV;
-            };
-            let Some(state) = state.as_mut() else {
-                return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-            };
-
-            let Ok(Some(response)) = state.send_signing_request_wait_for_response(
-                pubkey,
-                auth_data,
-                signer.auth_request_originator,
-            ) else {
-                return CKR_FUNCTION_FAILED as CK_RV;
-            };
-            response_ = Some(response);
+        let response = match state_accessor.send_signing_request_wait_for_response(
+            pubkey,
+            auth_data,
+            signer.auth_request_originator,
+        ) {
+            Ok(response) => response,
+            Err(err) => return err.into_ck_rv(),
+        };
+        if let Err(err) = state_accessor.store_signing_response(&hSession, response.clone()) {
+            return err.into_ck_rv();
         }
-        let Ok(mut state) = STATE.write() else {
-            return CKR_GENERAL_ERROR as CK_RV;
-        };
-        let Some(state) = state.as_mut() else {
-            return CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV;
-        };
-        let Some(mut session) = state.get_session_mut(&hSession) else {
-            return CKR_SESSION_HANDLE_INVALID as CK_RV;
-        };
-        let response = response_.unwrap();
-        session.store_signing_response(response.clone());
-        signer.response = Some(response);
     }
 
-    let Some(response) = signer.response.as_ref() else {
-        panic!("Shouldn't happen");
-    };
+    let response = signer.response.as_ref().unwrap();
     unsafe {
         *pulSignatureLen = response.len() as CK_ULONG;
     }

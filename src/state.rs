@@ -29,7 +29,10 @@ use tonic::transport::Certificate;
 use session::{session::Session, sessions::Sessions};
 use slots::{Slots, TokenStore};
 
-use self::object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch};
+use self::{
+    object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch},
+    session::session::Signer,
+};
 
 pub(crate) struct CryptokiState {
     sessions: Sessions,
@@ -372,6 +375,46 @@ impl StateAccessor {
         Ok(groups)
     }
 
+    pub(crate) fn send_signing_request_wait_for_response(
+        &self,
+        group_id: GroupId,
+        data: RequestData,
+        request_originator: Option<String>,
+    ) -> Result<TaskId, CryptokiError> {
+        let runtime = RUNTIME.read()?;
+        let runtime = runtime
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        let mut communicator = COMMUNICATOR.lock()?;
+        let communicator = communicator
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?;
+        let response = runtime.block_on(async move {
+            let task_id = communicator
+                .send_auth_request(group_id, data, request_originator)
+                .await?;
+            communicator.get_auth_response(task_id).await
+        })?;
+
+        Ok(response.ok_or(CryptokiError::FunctionFailed)?)
+    }
+
+    pub(crate) fn store_signing_response(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        response: AuthResponse,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+
+        session.store_signing_response(response);
+        Ok(())
+    }
+
     pub(crate) fn insert_token(&self, token: TokenStore) -> Result<CK_SLOT_ID, CryptokiError> {
         let mut slots = SLOTS.write()?;
         let slots = slots
@@ -505,6 +548,37 @@ impl StateAccessor {
             .get_session_mut(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         Ok(session.get_filtered_handles(count))
+    }
+
+    pub(crate) fn set_signer(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        signer: Signer,
+    ) -> Result<(), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        session.set_signer(signer);
+        Ok(())
+    }
+
+    pub(crate) fn get_signer(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+    ) -> Result<Signer, CryptokiError> {
+        let sessions = SESSIONS.read()?;
+        let session = sessions
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        let signer = session
+            .get_signer()
+            .ok_or(CryptokiError::FunctionNotSupported)?;
+        Ok(signer)
     }
 
     #[cfg(not(feature = "mocked_meesign"))]
