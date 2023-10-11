@@ -242,6 +242,5 @@ jobs:
         with:
           PACKAGE-NAME: ./cryptoki-bridge_*.deb
           PACKAGECLOUD-USERNAME: kristian_mika
-          PACKAGECLOUD-REPONAME: mpc-bridge/any/any
-          PACKAGECLOUD-DISTRO: debian
+          PACKAGECLOUD-REPONAME: mpc-bridge/ubuntu/jammy/release
           PACKAGECLOUD-TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
