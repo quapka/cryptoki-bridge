@@ -14,8 +14,8 @@ use super::bindings::{
 /// * `pApplication` - an application-defined pointer to be passed to the notification callback
 /// * `Notify` - the address of the notification callback function
 /// * `phSession` - points to the location that receives the handle for the new session
-#[allow(non_snake_case)]
-pub(crate) fn C_OpenSession(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_OpenSession(
     slotID: CK_SLOT_ID,
     flags: CK_FLAGS,
     pApplication: CK_VOID_PTR,
@@ -42,8 +42,8 @@ pub(crate) fn C_OpenSession(
 /// # Arguments
 ///
 /// * `hSession` - the session’s handle
-#[allow(non_snake_case)]
-pub(crate) fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
     let state_accessor = StateAccessor::new();
     if let Err(err) = state_accessor.close_session(&hSession) {
         return err.into_ck_rv();
@@ -60,8 +60,8 @@ pub(crate) fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
 /// `userType` - the user type
 /// `pPin` - points to the user’s PIN
 /// `ulPinLen` - the length of the PIN
-#[allow(non_snake_case)]
-pub(crate) fn C_Login(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Login(
     hSession: CK_SESSION_HANDLE,
     userType: CK_USER_TYPE,
     pPin: CK_UTF8CHAR_PTR,
@@ -77,8 +77,8 @@ pub(crate) fn C_Login(
 /// # Arguments
 ///
 /// * `hSession` - the session’s handle
-#[allow(non_snake_case)]
-pub(crate) fn C_Logout(hSession: CK_SESSION_HANDLE) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Logout(hSession: CK_SESSION_HANDLE) -> CK_RV {
     // for now do nothing
     // TODO
     CKR_OK as CK_RV

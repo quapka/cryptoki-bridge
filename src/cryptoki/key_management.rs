@@ -33,8 +33,8 @@ pub(crate) const AES_IV_SIZE: usize = AES_BLOCK_SIZE;
 /// * `pTemplate` - points to the template for the new key or set of domain parameters
 /// * `ulCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the new key or set of domain parameters
-#[allow(non_snake_case)]
-pub(crate) fn C_GenerateKey(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GenerateKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     pTemplate: CK_ATTRIBUTE_PTR,
@@ -79,8 +79,8 @@ pub(crate) fn C_GenerateKey(
 /// * `ulPrivateKeyAttributeCount` - the number of attributes in the private-key template
 /// * `phPublicKey` - points to the location that receives the handle of the new public key
 /// * `phPrivateKey` - points to the location that receives the handle of the new private key
-#[allow(non_snake_case)]
-pub(crate) fn C_GenerateKeyPair(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GenerateKeyPair(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     pPublicKeyTemplate: CK_ATTRIBUTE_PTR,
@@ -114,8 +114,8 @@ pub(crate) fn C_GenerateKeyPair(
 /// * `hKey` - the handle of the key to be wrapped
 /// * `pWrappedKey` - points to the location that receives the wrapped key
 /// * `pulWrappedKeyLen` - points to the location that receives the length of the wrapped key
-#[allow(non_snake_case)]
-pub(crate) fn C_WrapKey(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_WrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hWrappingKey: CK_OBJECT_HANDLE,
@@ -173,8 +173,8 @@ pub(crate) fn C_WrapKey(
 /// * `pTemplate` - points to the template for the new key
 /// * `ulAttributeCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the recovered key
-#[allow(non_snake_case)]
-pub(crate) fn C_UnwrapKey(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_UnwrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hUnwrappingKey: CK_OBJECT_HANDLE,

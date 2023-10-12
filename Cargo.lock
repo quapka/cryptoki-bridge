@@ -361,6 +361,7 @@ dependencies = [
  "bindgen",
  "byteorder",
  "cbc",
+ "cryptoki_macros",
  "dashmap",
  "hex",
  "home",
@@ -378,6 +379,14 @@ dependencies = [
  "tonic",
  "tonic-build",
  "uuid",
+]
+
+[[package]]
+name = "cryptoki_macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 2.0.27",
 ]
 
 [[package]]

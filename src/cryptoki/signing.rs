@@ -20,8 +20,8 @@ use super::{
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the signature mechanism
 /// * `hKey` - handle of the signature key
-#[allow(non_snake_case)]
-pub(super) fn C_SignInit(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_SignInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -63,8 +63,8 @@ pub(super) fn C_SignInit(
 /// * `ulDataLen` - the length of the data
 /// * `pSignature` - points to the location that receives the signature
 /// * `pulSignatureLen` - points to the location that holds the length of the signature
-#[allow(non_snake_case)]
-pub(super) fn C_Sign(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Sign(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,

@@ -10,9 +10,8 @@ use crate::{
 };
 
 use super::bindings::{
-    CKR_ARGUMENTS_BAD, CKR_BUFFER_TOO_SMALL, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_GENERAL_ERROR,
-    CKR_OK, CKR_SLOT_ID_INVALID, CK_BBOOL, CK_RV, CK_SLOT_ID, CK_SLOT_ID_PTR, CK_SLOT_INFO_PTR,
-    CK_TOKEN_INFO_PTR, CK_ULONG, CK_ULONG_PTR,
+    CKR_ARGUMENTS_BAD, CKR_BUFFER_TOO_SMALL, CKR_OK, CK_BBOOL, CK_RV, CK_SLOT_ID, CK_SLOT_ID_PTR,
+    CK_SLOT_INFO_PTR, CK_TOKEN_INFO_PTR, CK_ULONG, CK_ULONG_PTR,
 };
 
 /// Used to obtain a list of slots in the system
@@ -22,8 +21,8 @@ use super::bindings::{
 /// * `tokenPresent` - indicates whether the list obtained includes only those slots with a token present, or all slots
 /// * `pSlotList` - points to the buffer for the slot list
 /// * `pulCount` -  points to the location that receives the number of slots
-#[allow(non_snake_case)]
-pub(crate) fn C_GetSlotList(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetSlotList(
     _tokenPresent: CK_BBOOL,
     pSlotList: CK_SLOT_ID_PTR,
     pulCount: CK_ULONG_PTR,
@@ -71,8 +70,8 @@ pub(crate) fn C_GetSlotList(
 ///
 /// * `slotID` - the ID of the token’s slot
 /// * `pInfo` - points to the location that receives the token information
-#[allow(non_snake_case)]
-pub(super) fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -87,8 +86,8 @@ pub(super) fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK
     CKR_OK as CK_RV
 }
 
-#[allow(non_snake_case)]
-pub(super) fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }

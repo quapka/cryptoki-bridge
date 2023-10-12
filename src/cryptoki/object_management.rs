@@ -10,10 +10,9 @@ use crate::state::{
 
 use super::{
     bindings::{
-        CKR_ARGUMENTS_BAD, CKR_ATTRIBUTE_TYPE_INVALID, CKR_CRYPTOKI_NOT_INITIALIZED,
-        CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID, CKR_OK, CKR_SESSION_HANDLE_INVALID,
-        CKR_TEMPLATE_INCOMPLETE, CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
-        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKR_ARGUMENTS_BAD, CKR_ATTRIBUTE_TYPE_INVALID, CKR_OK, CKR_TEMPLATE_INCOMPLETE,
+        CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE,
+        CK_ULONG, CK_ULONG_PTR,
     },
     utils::FromPointer,
 };
@@ -26,8 +25,8 @@ use super::{
 /// * `pTemplate` - points to the object’s template
 /// * `ulCount` - the number of attributes in the template
 /// * `phObject` - points to the location that receives the new object’s handle
-#[allow(non_snake_case)]
-pub(crate) fn C_CreateObject(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_CreateObject(
     hSession: CK_SESSION_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
     ulCount: CK_ULONG,
@@ -59,8 +58,8 @@ pub(crate) fn C_CreateObject(
 ///
 /// * `hSession` - the session’s handle
 /// * `hObject` - the object’s handle
-#[allow(non_snake_case)]
-pub(crate) fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE) -> CK_RV {
     let state_accessor = StateAccessor::new();
 
     match state_accessor.destroy_object(&hSession, &hObject) {
@@ -77,8 +76,8 @@ pub(crate) fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HA
 /// * `hObject` - the object’s handle
 /// * `pTemplate` - points to a template that specifies which attribute values are to be obtained, and receives the attribute values
 /// * `ulCount` - the number of attributes in the template
-#[allow(non_snake_case)]
-pub(crate) fn C_GetAttributeValue(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetAttributeValue(
     hSession: CK_SESSION_HANDLE,
     hObject: CK_OBJECT_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
@@ -132,8 +131,8 @@ pub(crate) fn C_GetAttributeValue(
 /// * `pTemplate` - points to a search template that specifies the attribute values to match
 /// * `ulCount` - the number of attributes in the search template. If 0, find all objects
 ///
-#[allow(non_snake_case)]
-pub(crate) fn C_FindObjectsInit(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_FindObjectsInit(
     hSession: CK_SESSION_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
     ulCount: CK_ULONG,
@@ -160,8 +159,8 @@ pub(crate) fn C_FindObjectsInit(
 /// * `phObject` - points to the location that receives the list (array) of additional object handles
 /// * `ulMaxObjectCount` - the maximum number of object handles to be returned
 /// * `pulObjectCount` - points to the location that receives the actual number of object handles returned
-#[allow(non_snake_case)]
-pub(super) fn C_FindObjects(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_FindObjects(
     hSession: CK_SESSION_HANDLE,
     phObject: CK_OBJECT_HANDLE_PTR,
     ulMaxObjectCount: CK_ULONG,
@@ -190,8 +189,8 @@ pub(super) fn C_FindObjects(
 /// # Arguments
 ///
 /// * `hSession` - the session’s handle
-#[allow(non_snake_case)]
-pub(crate) fn C_FindObjectsFinal(hSession: CK_SESSION_HANDLE) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_FindObjectsFinal(hSession: CK_SESSION_HANDLE) -> CK_RV {
     let state_accessor = StateAccessor::new();
     if let Err(err) = state_accessor.reset_object_search(&hSession) {
         return err.into_ck_rv();

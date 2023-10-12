@@ -20,8 +20,8 @@ use super::{
 /// `hSession` - the session’s handle
 /// `pMechanism` - points to the decryption mechanism
 /// `hKey` - the handle of the decryption key
-#[allow(non_snake_case)]
-pub(crate) fn C_DecryptInit(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_DecryptInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -38,8 +38,8 @@ pub(crate) fn C_DecryptInit(
 /// * `ulEncryptedDataLen` - the length of the encrypted data
 /// * `pData` - points to the location that receives the recovered data
 /// * `pulDataLen` - points to the location that holds the length of the recovered data
-#[allow(non_snake_case)]
-pub(crate) fn C_Decrypt(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Decrypt(
     hSession: CK_SESSION_HANDLE,
     pEncryptedData: CK_BYTE_PTR,
     ulEncryptedDataLen: CK_ULONG,

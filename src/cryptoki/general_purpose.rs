@@ -1,11 +1,21 @@
 use std::mem;
 
 use super::{
-    api,
     bindings::{
         CKR_ARGUMENTS_BAD, CKR_HOST_MEMORY, CKR_OK, CK_FUNCTION_LIST, CK_FUNCTION_LIST_PTR_PTR,
         CK_INFO, CK_INFO_PTR, CK_RV, CK_VERSION, CK_VOID_PTR,
     },
+    decryption::{C_Decrypt, C_DecryptInit},
+    encryption::{C_Encrypt, C_EncryptFinal, C_EncryptInit, C_EncryptUpdate},
+    key_management::{C_GenerateKey, C_GenerateKeyPair, C_UnwrapKey, C_WrapKey},
+    message_digesting::{C_Digest, C_DigestInit},
+    object_management::{
+        C_CreateObject, C_DestroyObject, C_FindObjects, C_FindObjectsFinal, C_FindObjectsInit,
+        C_GetAttributeValue,
+    },
+    session_management::{C_CloseSession, C_Login, C_Logout, C_OpenSession},
+    signing::{C_Sign, C_SignInit},
+    slot_token::{C_GetSlotInfo, C_GetSlotList, C_GetTokenInfo},
     unsupported,
 };
 use crate::state::StateAccessor;
@@ -15,8 +25,8 @@ use crate::state::StateAccessor;
 /// # Arguments
 ///
 /// * `pInitArgs` - either has the value NULL_PTR or points to a CK_C_INITIALIZE_ARGS structure containing information on how the library should deal with multi-threaded access
-#[allow(non_snake_case)]
-pub(crate) fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
     // TODO: check later if some actions are required
 
     let state_accessor = StateAccessor::new();
@@ -32,8 +42,8 @@ pub(crate) fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
 /// # Arguments
 ///
 /// * `pReserved` - reserved for future versions; for this version, it should be set to NULL_PTR
-#[allow(non_snake_case)]
-pub(crate) fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
     if !pReserved.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -45,8 +55,8 @@ pub(crate) fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
     CKR_OK as CK_RV
 }
 
-#[allow(non_snake_case)]
-pub(crate) fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -68,8 +78,8 @@ pub(crate) fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
 /// # Arguments
 ///
 /// * `ppFunctionList` - points to a value which will receive a pointer to the library’s CK_FUNCTION_LIST structure
-#[allow(non_snake_case)]
-pub(super) fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
+#[cryptoki_macros::cryptoki_function]
+pub fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
     if ppFunctionList.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -77,50 +87,50 @@ pub(super) fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_
     // TODO: add functions when implemented
     let function_list = CK_FUNCTION_LIST {
         version,
-        C_Initialize: Some(api::C_Initialize),
-        C_Finalize: Some(api::C_Finalize),
-        C_GetInfo: Some(api::C_GetInfo),
-        C_GetFunctionList: Some(api::C_GetFunctionList),
-        C_GetSlotList: Some(api::C_GetSlotList),
-        C_GetSlotInfo: Some(api::C_GetSlotInfo),
-        C_GetTokenInfo: Some(api::C_GetTokenInfo),
+        C_Initialize: Some(C_Initialize),
+        C_Finalize: Some(C_Finalize),
+        C_GetInfo: Some(C_GetInfo),
+        C_GetFunctionList: Some(C_GetFunctionList),
+        C_GetSlotList: Some(C_GetSlotList),
+        C_GetSlotInfo: Some(C_GetSlotInfo),
+        C_GetTokenInfo: Some(C_GetTokenInfo),
         C_GetMechanismList: Some(unsupported::C_GetMechanismList),
         C_GetMechanismInfo: Some(unsupported::C_GetMechanismInfo),
         C_InitToken: Some(unsupported::C_InitToken),
         C_InitPIN: Some(unsupported::C_InitPIN),
         C_SetPIN: Some(unsupported::C_SetPIN),
-        C_OpenSession: Some(api::C_OpenSession),
-        C_CloseSession: Some(api::C_CloseSession),
+        C_OpenSession: Some(C_OpenSession),
+        C_CloseSession: Some(C_CloseSession),
         C_CloseAllSessions: Some(unsupported::C_CloseAllSessions),
         C_GetSessionInfo: Some(unsupported::C_GetSessionInfo),
         C_GetOperationState: Some(unsupported::C_GetOperationState),
         C_SetOperationState: Some(unsupported::C_SetOperationState),
-        C_Login: Some(api::C_Login),
-        C_Logout: Some(api::C_Logout),
-        C_CreateObject: Some(api::C_CreateObject),
+        C_Login: Some(C_Login),
+        C_Logout: Some(C_Logout),
+        C_CreateObject: Some(C_CreateObject),
         C_CopyObject: Some(unsupported::C_CopyObject),
-        C_DestroyObject: Some(api::C_DestroyObject),
+        C_DestroyObject: Some(C_DestroyObject),
         C_GetObjectSize: Some(unsupported::C_GetObjectSize),
-        C_GetAttributeValue: Some(api::C_GetAttributeValue),
+        C_GetAttributeValue: Some(C_GetAttributeValue),
         C_SetAttributeValue: Some(unsupported::C_SetAttributeValue),
-        C_FindObjectsInit: Some(api::C_FindObjectsInit),
-        C_FindObjects: Some(api::C_FindObjects),
-        C_FindObjectsFinal: Some(api::C_FindObjectsFinal),
-        C_EncryptInit: Some(api::C_EncryptInit),
-        C_Encrypt: Some(api::C_Encrypt),
-        C_EncryptUpdate: Some(api::C_EncryptUpdate),
-        C_EncryptFinal: Some(api::C_EncryptFinal),
-        C_DecryptInit: Some(api::C_DecryptInit),
-        C_Decrypt: Some(api::C_Decrypt),
+        C_FindObjectsInit: Some(C_FindObjectsInit),
+        C_FindObjects: Some(C_FindObjects),
+        C_FindObjectsFinal: Some(C_FindObjectsFinal),
+        C_EncryptInit: Some(C_EncryptInit),
+        C_Encrypt: Some(C_Encrypt),
+        C_EncryptUpdate: Some(C_EncryptUpdate),
+        C_EncryptFinal: Some(C_EncryptFinal),
+        C_DecryptInit: Some(C_DecryptInit),
+        C_Decrypt: Some(C_Decrypt),
         C_DecryptUpdate: Some(unsupported::C_DecryptUpdate),
         C_DecryptFinal: Some(unsupported::C_DecryptFinal),
-        C_DigestInit: Some(api::C_DigestInit),
-        C_Digest: Some(api::C_Digest),
+        C_DigestInit: Some(C_DigestInit),
+        C_Digest: Some(C_Digest),
         C_DigestUpdate: Some(unsupported::C_DigestUpdate),
         C_DigestKey: Some(unsupported::C_DigestKey),
         C_DigestFinal: Some(unsupported::C_DigestFinal),
-        C_SignInit: Some(api::C_SignInit),
-        C_Sign: Some(api::C_Sign),
+        C_SignInit: Some(C_SignInit),
+        C_Sign: Some(C_Sign),
         C_SignUpdate: Some(unsupported::C_SignUpdate),
         C_SignFinal: Some(unsupported::C_SignFinal),
         C_SignRecoverInit: Some(unsupported::C_SignRecoverInit),
@@ -135,10 +145,10 @@ pub(super) fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_
         C_DecryptDigestUpdate: Some(unsupported::C_DecryptDigestUpdate),
         C_SignEncryptUpdate: Some(unsupported::C_SignEncryptUpdate),
         C_DecryptVerifyUpdate: Some(unsupported::C_DecryptVerifyUpdate),
-        C_GenerateKey: Some(api::C_GenerateKey),
-        C_GenerateKeyPair: Some(api::C_GenerateKeyPair),
-        C_WrapKey: Some(api::C_WrapKey),
-        C_UnwrapKey: Some(api::C_UnwrapKey),
+        C_GenerateKey: Some(C_GenerateKey),
+        C_GenerateKeyPair: Some(C_GenerateKeyPair),
+        C_WrapKey: Some(C_WrapKey),
+        C_UnwrapKey: Some(C_UnwrapKey),
         C_DeriveKey: Some(unsupported::C_DeriveKey),
         C_SeedRandom: Some(unsupported::C_SeedRandom),
         C_GenerateRandom: Some(unsupported::C_GenerateRandom),

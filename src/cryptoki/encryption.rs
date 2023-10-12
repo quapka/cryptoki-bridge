@@ -23,8 +23,8 @@ use super::{
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the encryption mechanism
 /// * `hKey` - the handle of the encryption key
-#[allow(non_snake_case)]
-pub(crate) fn C_EncryptInit(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_EncryptInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -63,8 +63,8 @@ pub(crate) fn C_EncryptInit(
 /// * `ulDataLen` - the length in bytes of the data
 /// * `pEncryptedData` - points to the location that receives the encrypted data
 /// * `pulEncryptedDataLen` - points to the location that holds the length in bytes of the encrypted data
-#[allow(non_snake_case)]
-pub(crate) fn C_Encrypt(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_Encrypt(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,
@@ -114,8 +114,8 @@ pub(crate) fn C_Encrypt(
 /// * `ulPartLen` - the length of the data part
 /// * `pEncryptedPart` - points to the location that receives the encrypted data part
 /// * `pulEncryptedPartLen` - points to the location that holds the length in bytes of the encrypted data part
-#[allow(non_snake_case)]
-pub(crate) fn C_EncryptUpdate(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_EncryptUpdate(
     hSession: CK_SESSION_HANDLE,
     pPart: CK_BYTE_PTR,
     ulPartLen: CK_ULONG,
@@ -133,8 +133,8 @@ pub(crate) fn C_EncryptUpdate(
 /// * `hSession` - the session’s handle
 /// * `pLastEncryptedPart` - points to the location that receives the last encrypted data part, if any
 /// * `pulLastEncryptedPartLen` - points to the location that holds the length of the last encrypted data part
-#[allow(non_snake_case)]
-pub(super) fn C_EncryptFinal(
+#[cryptoki_macros::cryptoki_function]
+pub fn C_EncryptFinal(
     hSession: CK_SESSION_HANDLE,
     pLastEncryptedPart: CK_BYTE_PTR,
     pulLastEncryptedPartLen: CK_ULONG_PTR,
