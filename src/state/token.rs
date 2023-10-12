@@ -17,6 +17,8 @@ pub(crate) trait Token: Sync + Send {
 
     fn get_public_key(&self) -> &[u8];
 
+    fn get_label(&self) -> &str;
+
     fn get_slot_info(&self) -> CK_SLOT_INFO;
 }
 
@@ -65,6 +67,10 @@ impl Token for MeesignToken {
 
     fn get_public_key(&self) -> &[u8] {
         &self.group_id
+    }
+
+    fn get_label(&self) -> &str {
+        &self.name
     }
 }
 

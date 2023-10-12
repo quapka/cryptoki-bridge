@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::{
     communicator::{AuthResponse, GroupId, TaskId},
-    cryptoki::bindings::CK_OBJECT_HANDLE,
+    cryptoki::bindings::{CKA_LABEL, CK_ATTRIBUTE_TYPE, CK_OBJECT_HANDLE},
     persistence::cryptoki_repo::CryptokiRepo,
     state::{
         object::{
@@ -112,6 +112,7 @@ impl Session {
     pub(crate) fn new(token: TokenStore, cryptoki_repo: Arc<dyn CryptokiRepo>) -> Self {
         // TODO: refactor
         let pubkey: GroupId = token.read().unwrap().get_public_key().into();
+        let token_label: String = token.read().unwrap().get_label().into();
         let mut session = Self {
             hasher: None,
             object_search: None,
@@ -125,7 +126,7 @@ impl Session {
             ephemeral_objects: HashMap::new(),
         };
 
-        session.key_pair = Some(session.create_communicator_keypair(pubkey));
+        session.key_pair = Some(session.create_communicator_keypair(pubkey, token_label));
         session
     }
     pub fn get_keypair(&self) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
@@ -288,9 +289,14 @@ impl Session {
     pub fn create_communicator_keypair(
         &mut self,
         pubkey: GroupId,
+        token_label: String,
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         let mut pubkey_object = PublicKeyObject::new();
         pubkey_object.store_value(pubkey.clone());
+        pubkey_object.set_attribute(
+            CKA_LABEL as CK_ATTRIBUTE_TYPE,
+            token_label.as_bytes().into(),
+        );
         let pubkey_handle = self.create_ephemeral_object(Arc::new(pubkey_object));
 
         let mut private_key = PrivateKeyObject::new();

@@ -97,9 +97,6 @@ impl CryptokiObject for PublicKeyObject {
         if attribute_type == CKA_KEY_TYPE as CK_ATTRIBUTE_TYPE {
             return Some(CKK_ECDSA.to_le_bytes().into());
         }
-        if attribute_type == CKA_LABEL as CK_ATTRIBUTE_TYPE {
-            return Some("meesign".as_bytes().into());
-        }
 
         if attribute_type == CKA_ID as CK_ATTRIBUTE_TYPE {
             return Some("".as_bytes().into());
