@@ -6,6 +6,7 @@ pub mod cryptoki;
 mod cryptoki_error;
 mod persistence;
 pub(crate) mod state;
+pub(crate) mod utils;
 
 use crate::{
     communicator::Communicator,

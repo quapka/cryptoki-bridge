@@ -8,16 +8,28 @@ use uuid::Uuid;
 
 use crate::{
     communicator::{AuthResponse, GroupId, TaskId},
-    cryptoki::bindings::{CKA_LABEL, CK_ATTRIBUTE_TYPE, CK_OBJECT_HANDLE},
+    cryptoki::bindings::{
+        CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_EC_PARAMS, CKA_EC_POINT, CKA_ID, CKA_KEY_TYPE,
+        CKA_LABEL, CKA_VALUE, CKK_ECDSA, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY, CK_FALSE,
+        CK_OBJECT_HANDLE,
+    },
     persistence::cryptoki_repo::CryptokiRepo,
     state::{
         object::{
-            cryptoki_object::CryptokiObject, object_search::ObjectSearch,
-            private_key_object::PrivateKeyObject, public_key_object::PublicKeyObject,
+            attribute::Attribute,
+            cryptoki_object::{AttributeValue, CryptokiObject},
+            object_search::ObjectSearch,
+            private_key_object::PrivateKeyObject,
+            public_key_object::PublicKeyObject,
+            template::Template,
         },
         slots::TokenStore,
     },
+    utils::format_public_key,
 };
+
+const NIST_P256_EC_PARAMS_DER_HEX: &str = "06082a8648ce3d030107";
+static KEYPAIR_IDENTIFIER_FROM_PUBLIC_PREFIX_LENGTH: usize = 8;
 
 /// Holds the current state of PKCS#11 lib
 pub(crate) struct Session {
@@ -291,17 +303,59 @@ impl Session {
         pubkey: GroupId,
         token_label: String,
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
-        let mut pubkey_object = PublicKeyObject::new();
-        pubkey_object.store_value(pubkey.clone());
-        pubkey_object.set_attribute(
-            CKA_LABEL as CK_ATTRIBUTE_TYPE,
-            token_label.as_bytes().into(),
-        );
+        let pubkey_template = get_communicator_public_key_template(&token_label, pubkey.clone());
+        let pubkey_object = PublicKeyObject::from_template(pubkey_template);
         let pubkey_handle = self.create_ephemeral_object(Arc::new(pubkey_object));
 
-        let mut private_key = PrivateKeyObject::new();
-        private_key.store_value(pubkey.clone());
+        let private_key_template = get_communicator_private_key_template(&token_label, pubkey);
+        let private_key = PrivateKeyObject::from_template(private_key_template);
         let private_key_handle = self.create_ephemeral_object(Arc::new(private_key));
+
         (private_key_handle, pubkey_handle)
     }
+}
+
+fn get_communicator_common_key_attributes(
+    token_label: &str,
+    public_key: Vec<u8>,
+) -> Vec<Attribute> {
+    let key_identifier: Vec<u8> = public_key
+        .iter()
+        .cloned()
+        .take(KEYPAIR_IDENTIFIER_FROM_PUBLIC_PREFIX_LENGTH)
+        .collect();
+    vec![
+        Attribute::from_parts(CKA_LABEL, token_label),
+        Attribute::from_parts(CKA_VALUE, public_key),
+        Attribute::from_parts(CKA_ID, key_identifier),
+    ]
+}
+
+fn get_communicator_public_key_template(token_label: &str, public_key: AttributeValue) -> Template {
+    let mut common_attributes =
+        get_communicator_common_key_attributes(token_label, public_key.clone());
+    let ec_params = hex::decode(NIST_P256_EC_PARAMS_DER_HEX).unwrap();
+    let mut attributes = vec![
+        Attribute::from_parts(CKA_KEY_TYPE, CKK_ECDSA),
+        Attribute::from_parts(CKA_EC_PARAMS, ec_params),
+        Attribute::from_parts(CKA_EC_POINT, format_public_key(public_key)),
+        Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
+    ];
+    attributes.append(&mut common_attributes);
+
+    Template::from_vec(attributes)
+}
+
+fn get_communicator_private_key_template(
+    token_label: &str,
+    public_key: AttributeValue,
+) -> Template {
+    let mut common_attributes = get_communicator_common_key_attributes(token_label, public_key);
+    let mut attributes = vec![
+        Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
+        Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
+    ];
+    attributes.append(&mut common_attributes);
+
+    Template::from_vec(attributes)
 }

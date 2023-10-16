@@ -2,8 +2,7 @@ use uuid::Uuid;
 
 use crate::{
     cryptoki::bindings::{
-        CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_ID, CKA_SIGN, CKA_VALUE, CKO_PRIVATE_KEY,
-        CK_ATTRIBUTE_TYPE, CK_FALSE, CK_TRUE,
+        CKA_CLASS, CKA_ID, CKA_SIGN, CKA_VALUE, CKO_PRIVATE_KEY, CK_ATTRIBUTE_TYPE, CK_TRUE,
     },
     state::object::cryptoki_object::AttributeValidator,
 };
@@ -31,7 +30,6 @@ impl PrivateKeyObject {
             id: Uuid::new_v4(),
             attributes,
         };
-        // TODO: check endianity
         object.set_attribute(
             CKA_CLASS as CK_ATTRIBUTE_TYPE,
             (CKO_PRIVATE_KEY as CK_ATTRIBUTE_TYPE)
@@ -92,10 +90,6 @@ impl CryptokiObject for PrivateKeyObject {
     }
 
     fn get_attribute(&self, attribute_type: CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {
-        // TODO: remove default values
-        if attribute_type == CKA_ALWAYS_AUTHENTICATE as CK_ATTRIBUTE_TYPE {
-            return Some(CK_FALSE.to_le_bytes().into());
-        }
         self.attributes.get(&attribute_type).and_then(|x| x.clone())
     }
 

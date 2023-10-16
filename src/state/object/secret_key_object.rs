@@ -11,7 +11,6 @@ use super::{
     template::Template,
 };
 
-// TODO: consider using bool at this lvl of abstraction
 #[derive(Clone)]
 pub(crate) struct SecretKeyObject {
     id: Uuid,
@@ -24,7 +23,6 @@ impl SecretKeyObject {
             id: Uuid::new_v4(),
             attributes: Attributes::new(),
         };
-        // TODO: check endianity
         object.set_attribute(
             CKA_CLASS as CK_ATTRIBUTE_TYPE,
             (CKO_SECRET_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec(),

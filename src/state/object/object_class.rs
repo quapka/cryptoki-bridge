@@ -24,7 +24,6 @@ impl ObjectClass {
 
         let mut cursor = Cursor::new(value);
         let Ok(value) = cursor.read_u64::<LittleEndian>() else {
-            // TODO: get endianity programatically
             return None;
         };
         match value as u32 {
