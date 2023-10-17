@@ -84,7 +84,6 @@ pub fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
     let version = CK_VERSION { major: 0, minor: 1 };
-    // TODO: add functions when implemented
     let function_list = CK_FUNCTION_LIST {
         version,
         C_Initialize: Some(C_Initialize),
