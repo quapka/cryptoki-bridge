@@ -7,7 +7,7 @@ use crate::communicator::GroupId;
 
 use super::{configuration_provider_error::ConfigurationProviderError, ConfigurationProvider};
 
-static CONTROLLER_PORT: &str = "12345"; // TODO
+static CONTROLLER_PORT: &str = "11115";
 static IS_INTERFACE_USED_FOR_FIDO_ENV_NAME: &str = "USED_AS_FIDO";
 
 pub(crate) struct ControllerConfiguration {}
