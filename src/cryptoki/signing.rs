@@ -94,7 +94,10 @@ pub fn C_Sign(
             signer.auth_request_originator,
         ) {
             Ok(response) => response,
-            Err(err) => return err.into_ck_rv(),
+            Err(err) => {
+                println!("Authentication request failed.");
+                return err.into_ck_rv();
+            }
         };
         if let Err(err) = state_accessor.store_signing_response(&hSession, response.clone()) {
             return err.into_ck_rv();

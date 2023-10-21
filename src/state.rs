@@ -218,10 +218,12 @@ impl StateAccessor {
             .as_mut()
             .ok_or(CryptokiError::CryptokiNotInitialized)?;
         let response = runtime.block_on(async move {
+            println!("Waiting for authentication response...");
             let task_id = communicator
                 .send_auth_request(group_id, data, request_originator)
                 .await?;
-            communicator.get_auth_response(task_id).await
+            let response = communicator.get_auth_response(task_id).await;
+            response
         })?;
 
         Ok(response.ok_or(CryptokiError::FunctionFailed)?)
