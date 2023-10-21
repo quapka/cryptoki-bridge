@@ -60,6 +60,7 @@ impl From<CommunicatorError> for CryptokiError {
             CommunicatorError::InvalidConfigurationError => Self::FunctionFailed,
             CommunicatorError::TaskFailedError => Self::FunctionFailed,
             CommunicatorError::TaskTimedOutError(_) => Self::FunctionFailed,
+            CommunicatorError::ProcError(_) => Self::FunctionFailed,
         }
     }
 }

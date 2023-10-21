@@ -7,6 +7,7 @@ pub(crate) mod group;
 pub(crate) mod meesign;
 #[cfg(feature = "mocked_meesign")]
 pub(crate) mod mocked_meesign;
+pub(crate) mod task_name_provider;
 
 type ByteVector = Vec<u8>;
 pub(crate) type AuthResponse = ByteVector;

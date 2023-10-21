@@ -1,5 +1,6 @@
 use std::{error::Error, fmt::Display};
 
+use procfs::ProcError;
 use tonic::{codegen::http::uri::InvalidUri, Status};
 
 type WaitingTimeSeconds = u64;
@@ -12,6 +13,7 @@ pub(crate) enum CommunicatorError {
     TaskTimedOutError(WaitingTimeSeconds),
     #[cfg(feature = "mocked_meesign")]
     CryptographicError,
+    ProcError(ProcError),
 }
 
 impl Error for CommunicatorError {}
@@ -27,6 +29,7 @@ impl Display for CommunicatorError {
             }
             #[cfg(feature = "mocked_meesign")]
             CommunicatorError::CryptographicError => write!(f, "Cryptographic operation failed"),
+            CommunicatorError::ProcError(error) => write!(f, "Proc error: {}", error),
         }
     }
 }
@@ -46,6 +49,12 @@ impl From<Status> for CommunicatorError {
 impl From<InvalidUri> for CommunicatorError {
     fn from(_value: InvalidUri) -> Self {
         Self::InvalidConfigurationError
+    }
+}
+
+impl From<ProcError> for CommunicatorError {
+    fn from(value: ProcError) -> Self {
+        Self::ProcError(value)
     }
 }
 

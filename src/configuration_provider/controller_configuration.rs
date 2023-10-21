@@ -66,6 +66,7 @@ struct CertificateResponse {
     certificate_path: Option<String>,
 }
 
+#[derive(Eq, PartialEq)]
 pub(crate) enum EffectiveInterfaceType {
     WebAuthn,
     Cryptoki,

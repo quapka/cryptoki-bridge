@@ -4,15 +4,13 @@ use tonic::{
     transport::{Certificate, Channel, ClientTlsConfig, Uri},
 };
 
-use crate::{
-    communicator::meesign::proto::{mpc_client::MpcClient, GroupsRequest, KeyType},
-    configuration_provider::controller_configuration::EffectiveInterfaceType,
-};
+use crate::communicator::meesign::proto::{mpc_client::MpcClient, GroupsRequest, KeyType};
 use std::{str::FromStr, time::Duration};
 
 use self::proto::{task::TaskState, SignRequest, TaskRequest};
 use super::{
-    communicator_error::CommunicatorError, group::Group, Communicator, GroupId, RequestData, TaskId,
+    communicator_error::CommunicatorError, group::Group, task_name_provider::TaskNameProvider,
+    Communicator, GroupId, RequestData, TaskId,
 };
 use crate::communicator::AuthResponse;
 
@@ -65,7 +63,8 @@ impl Communicator for Meesign {
         data: RequestData,
         request_originator: Option<String>,
     ) -> Result<TaskId, CommunicatorError> {
-        let task_name = create_task_name(request_originator);
+        let task_name_provider = TaskNameProvider::new();
+        let task_name = task_name_provider.get_task_name(request_originator);
         let request = tonic::Request::new(SignRequest {
             name: task_name,
             group_id,
@@ -98,15 +97,5 @@ impl Communicator for Meesign {
         Err(CommunicatorError::TaskTimedOutError(
             (MAX_ATTEMPT_COUNT as u64) * ATTEMPT_SLEEP_SEC,
         ))
-    }
-}
-
-fn create_task_name(originator: Option<String>) -> String {
-    let effective_interface_type = EffectiveInterfaceType::from_environment();
-    match originator {
-        Some(originator) => {
-            format!("{effective_interface_type} authentication request for {originator}")
-        }
-        None => format!("{effective_interface_type} authentication request"),
     }
 }
