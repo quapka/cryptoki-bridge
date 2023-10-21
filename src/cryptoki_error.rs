@@ -1,4 +1,6 @@
-use std::{error::Error, fmt, sync::PoisonError};
+use std::sync::PoisonError;
+
+use thiserror::Error;
 
 use crate::{
     communicator::communicator_error::CommunicatorError,
@@ -9,29 +11,34 @@ use crate::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(crate) enum CryptokiError {
-    SynchronizationError,
+    #[error("Synchronization error occurred, a thread panicked while holding a lock")]
+    SynchronizationElementPoisoned,
+    #[error("Cryptoki not initialized")]
     CryptokiNotInitialized,
+    #[error("Session handle is invalid")]
     SessionHandleInvalid,
+    #[error("Invalid argument was supplied")]
     InvalidArgument,
+    #[error("Function is not supported")]
     FunctionNotSupported,
+    #[error("Operation is not initialized")]
     OperationNotInitialized,
+    #[error("Object handle is invalid")]
     ObjectHandleInvalid,
+    #[error("Function failed")]
     FunctionFailed,
+    #[error("Transport error occurred")]
     TransportError,
+    #[error("Slot ID is not valid")]
     SlotIdInvalid,
 }
-impl Error for CryptokiError {}
-impl fmt::Display for CryptokiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "CryptokiError")
-    }
-}
+
 impl CryptokiError {
     pub(crate) fn into_ck_rv(self) -> CK_RV {
         match self {
-            Self::SynchronizationError => CKR_GENERAL_ERROR as CK_RV,
+            Self::SynchronizationElementPoisoned => CKR_GENERAL_ERROR as CK_RV,
             Self::CryptokiNotInitialized => CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV,
             Self::SessionHandleInvalid => CKR_SESSION_HANDLE_INVALID as CK_RV,
             Self::InvalidArgument => CKR_ARGUMENTS_BAD as CK_RV,
@@ -47,7 +54,7 @@ impl CryptokiError {
 
 impl<S> From<PoisonError<S>> for CryptokiError {
     fn from(_value: PoisonError<S>) -> Self {
-        Self::SynchronizationError
+        Self::SynchronizationElementPoisoned
     }
 }
 
@@ -55,12 +62,13 @@ impl From<CommunicatorError> for CryptokiError {
     fn from(value: CommunicatorError) -> Self {
         match value {
             #[cfg(feature = "mocked_meesign")]
-            CommunicatorError::CryptographicError => Self::FunctionFailed,
-            CommunicatorError::TransportError => Self::TransportError,
-            CommunicatorError::InvalidConfigurationError => Self::FunctionFailed,
+            CommunicatorError::CryptographicError(_) => Self::FunctionFailed,
+            CommunicatorError::TransportError(_) => Self::TransportError,
+            CommunicatorError::InvalidConfigurationError(_) => Self::FunctionFailed,
             CommunicatorError::TaskFailedError => Self::FunctionFailed,
             CommunicatorError::TaskTimedOutError(_) => Self::FunctionFailed,
             CommunicatorError::ProcError(_) => Self::FunctionFailed,
+            CommunicatorError::InvalidStatusError(_) => Self::TransportError,
         }
     }
 }

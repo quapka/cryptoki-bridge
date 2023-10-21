@@ -1,66 +1,24 @@
-use std::{error::Error, fmt::Display};
-
 use procfs::ProcError;
-use tonic::{codegen::http::uri::InvalidUri, Status};
+use thiserror::Error;
+use tonic::codegen::http::uri::InvalidUri;
 
 type WaitingTimeSeconds = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(crate) enum CommunicatorError {
-    TransportError,
-    InvalidConfigurationError,
+    #[error("Communicator interaction failed: {0}")]
+    TransportError(#[from] tonic::transport::Error),
+    #[error("Communicator responded with an invalid status: {0}")]
+    InvalidStatusError(#[from] tonic::Status),
+    #[error("Invalid configuration")]
+    InvalidConfigurationError(#[from] InvalidUri),
+    #[error("Task failed remotely")]
     TaskFailedError,
+    #[error("Task timed out after {0} seconds")]
     TaskTimedOutError(WaitingTimeSeconds),
+    #[error("Procfs interaction failed: {0}")]
+    ProcError(#[from] ProcError),
     #[cfg(feature = "mocked_meesign")]
-    CryptographicError,
-    ProcError(ProcError),
-}
-
-impl Error for CommunicatorError {}
-
-impl Display for CommunicatorError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CommunicatorError::TransportError => write!(f, "Transport error"),
-            CommunicatorError::InvalidConfigurationError => write!(f, "Invalid configuration"),
-            CommunicatorError::TaskFailedError => write!(f, "Task failed remotely"),
-            CommunicatorError::TaskTimedOutError(waiting_time) => {
-                write!(f, "Task hasn't finished within {} seconds", waiting_time)
-            }
-            #[cfg(feature = "mocked_meesign")]
-            CommunicatorError::CryptographicError => write!(f, "Cryptographic operation failed"),
-            CommunicatorError::ProcError(error) => write!(f, "Proc error: {}", error),
-        }
-    }
-}
-
-impl From<tonic::transport::Error> for CommunicatorError {
-    fn from(_value: tonic::transport::Error) -> Self {
-        Self::TransportError
-    }
-}
-
-impl From<Status> for CommunicatorError {
-    fn from(_value: Status) -> Self {
-        Self::TransportError
-    }
-}
-
-impl From<InvalidUri> for CommunicatorError {
-    fn from(_value: InvalidUri) -> Self {
-        Self::InvalidConfigurationError
-    }
-}
-
-impl From<ProcError> for CommunicatorError {
-    fn from(value: ProcError) -> Self {
-        Self::ProcError(value)
-    }
-}
-
-#[cfg(feature = "mocked_meesign")]
-impl From<p256::ecdsa::Error> for CommunicatorError {
-    fn from(_value: p256::ecdsa::Error) -> Self {
-        Self::CryptographicError
-    }
+    #[error("Cryptographic operation failed")]
+    CryptographicError(#[from] p256::ecdsa::Error),
 }
