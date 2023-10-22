@@ -9,7 +9,7 @@ use crate::cryptoki::{
     utils::FromPointer,
 };
 
-pub(crate) fn encrypt(key: &[u8], plaintext: Vec<u8>) -> EncryptionOutput {
+pub(crate) fn encrypt_pad(key: &[u8], plaintext: Vec<u8>) -> EncryptionOutput {
     let key = GenericArray::from_slice(key).to_owned();
     let iv: [u8; AES_BLOCK_SIZE] = OsRng.gen();
     let mut plaintext_buffer: Vec<u8> = vec![0; plaintext.len() + AES_BLOCK_SIZE];
@@ -21,6 +21,10 @@ pub(crate) fn encrypt(key: &[u8], plaintext: Vec<u8>) -> EncryptionOutput {
         .unwrap()
         .to_vec();
     EncryptionOutput::new(ciphertext, iv.to_vec())
+}
+
+pub(crate) fn compute_pkcs7_padded_ciphertext_size(plaintext_length: usize) -> usize {
+    plaintext_length + (AES_BLOCK_SIZE - (plaintext_length % AES_BLOCK_SIZE))
 }
 
 pub(crate) fn decrypt(key: &[u8], mut ciphertext: Vec<u8>, iv: Vec<u8>) -> Vec<u8> {
@@ -68,12 +72,14 @@ impl EncryptionOutput {
 
 #[cfg(test)]
 mod test {
+    use rstest::rstest;
+
     use super::*;
     #[test]
     fn given_plaintext_encrypt_decrypt_return_plaintext() {
         let key = vec![1; 16];
         let plaintext = vec![2; 32];
-        let ciphertext = encrypt(&key, plaintext.clone());
+        let ciphertext = encrypt_pad(&key, plaintext.clone());
         let decrypted_plaintext = decrypt(&key, ciphertext.ciphertext, ciphertext.iv);
         assert_eq!(plaintext, decrypted_plaintext);
     }
@@ -89,5 +95,17 @@ mod test {
         };
         assert_eq!(iv, destructured.iv);
         assert_eq!(ciphertext, destructured.ciphertext);
+    }
+
+    #[rstest]
+    #[case(5, 16)]
+    #[case(15, 16)]
+    #[case(16, 32)]
+    fn given_plaintext_length_compute_pkcs7_padded_ciphertext_size_gives_valid_ciphertext_length(
+        #[case] plaintext_length: usize,
+        #[case] expected_ciphertext_length: usize,
+    ) {
+        let actual_ciphertext_length = compute_pkcs7_padded_ciphertext_size(plaintext_length);
+        assert_eq!(actual_ciphertext_length, expected_ciphertext_length);
     }
 }

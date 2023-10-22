@@ -4,11 +4,14 @@ use rand::{rngs::OsRng, Rng};
 
 use super::{
     bindings::{
-        CKM_AES_KEY_GEN, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_OK, CK_ATTRIBUTE_PTR,
-        CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
-        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKM_AES_KEY_GEN, CKM_AES_KEY_WRAP, CKM_AES_KEY_WRAP_PAD, CKM_ECDSA_KEY_PAIR_GEN,
+        CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID, CKR_OK,
+        CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_MECHANISM_TYPE, CK_OBJECT_HANDLE,
+        CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
-    internals::encryption::{decrypt, destructure_iv_ciphertext, encrypt},
+    internals::encryption::{
+        compute_pkcs7_padded_ciphertext_size, decrypt, destructure_iv_ciphertext, encrypt_pad,
+    },
     utils::FromPointer,
 };
 use crate::state::{
@@ -46,7 +49,7 @@ pub fn C_GenerateKey(
     }
 
     let mechanism = unsafe { *pMechanism };
-    // todo: implement others
+
     if mechanism.mechanism as u32 != CKM_AES_KEY_GEN {
         return CKR_FUNCTION_NOT_SUPPORTED as CK_RV;
     }
@@ -83,13 +86,18 @@ pub fn C_GenerateKey(
 pub fn C_GenerateKeyPair(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
-    pPublicKeyTemplate: CK_ATTRIBUTE_PTR,
-    ulPublicKeyAttributeCount: CK_ULONG,
-    pPrivateKeyTemplate: CK_ATTRIBUTE_PTR,
-    ulPrivateKeyAttributeCount: CK_ULONG,
+    _pPublicKeyTemplate: CK_ATTRIBUTE_PTR,
+    _ulPublicKeyAttributeCount: CK_ULONG,
+    _pPrivateKeyTemplate: CK_ATTRIBUTE_PTR,
+    _ulPrivateKeyAttributeCount: CK_ULONG,
     phPublicKey: CK_OBJECT_HANDLE_PTR,
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
+    let mechanism = unsafe { *pMechanism };
+    if mechanism.mechanism != CKM_ECDSA_KEY_PAIR_GEN as CK_MECHANISM_TYPE {
+        // we are supporting only ECDSA keys that are already generated externally
+        return CKR_MECHANISM_INVALID as CK_RV;
+    }
     let state_accessor = StateAccessor::new();
     let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
         Ok(val) => val,
@@ -126,6 +134,12 @@ pub fn C_WrapKey(
     if pulWrappedKeyLen.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
+
+    let mechanism = unsafe { *pMechanism };
+    if mechanism.mechanism != CKM_AES_KEY_WRAP_PAD as CK_MECHANISM_TYPE {
+        return CKR_MECHANISM_INVALID as CK_RV;
+    }
+
     let state_accessor = StateAccessor::new();
     let wrapping_key = match state_accessor.get_object(&hSession, &hWrappingKey) {
         Ok(val) => val,
@@ -138,14 +152,21 @@ pub fn C_WrapKey(
     let private_key = private_key.get_value().unwrap();
     let key = &wrapping_key.get_value().unwrap();
 
-    let encryption_output = encrypt(key, private_key);
+    if pWrappedKey.is_null() {
+        // the application is asking for the size of the wrapped key
+        let ciphertext_with_iv_len =
+            AES_IV_SIZE + compute_pkcs7_padded_ciphertext_size(private_key.len());
+        unsafe {
+            *pulWrappedKeyLen = ciphertext_with_iv_len as CK_ULONG;
+        }
+        return CKR_OK as CK_RV;
+    }
+
+    let encryption_output = encrypt_pad(key, private_key);
+
     let ciphertext_with_iv = encryption_output.into_combined();
     unsafe {
         *pulWrappedKeyLen = ciphertext_with_iv.len() as CK_ULONG;
-    }
-
-    if pWrappedKey.is_null() {
-        return CKR_OK as CK_RV;
     }
 
     unsafe {
@@ -156,8 +177,6 @@ pub fn C_WrapKey(
         );
     }
 
-    // TODO: either buffer ciphertext length or only precompute it if pWrappedKey is null
-    // now encryption is done twice
     CKR_OK as CK_RV
 }
 
@@ -188,6 +207,13 @@ pub fn C_UnwrapKey(
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
 
+    let mechanism = unsafe { *pMechanism };
+    match mechanism.mechanism as u32 {
+        CKM_AES_KEY_WRAP_PAD => {}
+        CKM_AES_KEY_WRAP => {}
+        _ => return CKR_MECHANISM_INVALID as CK_RV,
+    };
+
     let state_accessor = StateAccessor::new();
     let unwrapping_key = match state_accessor.get_object(&hSession, &hUnwrappingKey) {
         Ok(val) => val,
@@ -200,8 +226,9 @@ pub fn C_UnwrapKey(
 
     let plaintext = decrypt(&key, encryption_output.ciphertext, encryption_output.iv);
 
-    // TODO: create from template
-    let mut private_key_object = PrivateKeyObject::new();
+    let attributes = unsafe { Vec::from_pointer(pTemplate, ulAttributeCount as usize) };
+    let template = Template::from(attributes);
+    let mut private_key_object = PrivateKeyObject::from_template(template);
     private_key_object.store_value(plaintext);
 
     let handle =
