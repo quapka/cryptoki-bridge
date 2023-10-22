@@ -31,19 +31,13 @@ impl TaskNameProvider {
         task_name
     }
 
-    #[cfg(target_os = "linux")]
+    /// Don't rely on this function for security purposes. The filename can be easily spoofed.
     fn get_binary_name(&self) -> Result<Option<String>, CommunicatorError> {
-        use procfs::process::Process;
-
-        let this_process = Process::myself()?;
-        let process_name = this_process.stat()?.comm;
-        Ok(Some(process_name))
-    }
-
-    #[cfg(target_os = "windows")]
-    fn get_binary_name(&self) -> Result<String, CommunicatorError> {
-        // TODO: this is very unreliable, even worse than procfs for Linux
-        let filename = std::env::current_exe()?.file_name();
+        let filename = std::env::current_exe()?;
+        let filename = filename
+            .file_name()
+            .map(|filename| filename.to_str().map(|value: &str| value.to_string()))
+            .and_then(|value| value);
         Ok(filename)
     }
 }

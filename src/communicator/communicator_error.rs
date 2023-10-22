@@ -1,5 +1,3 @@
-#[cfg(target_os = "linux")]
-use procfs::ProcError;
 use thiserror::Error;
 use tonic::codegen::http::uri::InvalidUri;
 
@@ -17,9 +15,8 @@ pub(crate) enum CommunicatorError {
     TaskFailedError,
     #[error("Task timed out after {0} seconds")]
     TaskTimedOutError(WaitingTimeSeconds),
-    #[cfg(target_os = "linux")]
-    #[error("Procfs interaction failed: {0}")]
-    ProcError(#[from] ProcError),
+    #[error("I/O error occurred: {0}")]
+    IoError(#[from] std::io::Error),
     #[cfg(feature = "mocked_meesign")]
     #[error("Cryptographic operation failed")]
     CryptographicError(#[from] p256::ecdsa::Error),

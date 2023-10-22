@@ -71,9 +71,8 @@ impl From<CommunicatorError> for CryptokiError {
             CommunicatorError::InvalidConfigurationError(_) => Self::FunctionFailed,
             CommunicatorError::TaskFailedError => Self::FunctionFailed,
             CommunicatorError::TaskTimedOutError(_) => Self::FunctionFailed,
-            #[cfg(target_os = "linux")]
-            CommunicatorError::ProcError(_) => Self::FunctionFailed,
             CommunicatorError::InvalidStatusError(_) => Self::TransportError,
+            CommunicatorError::IoError(_) => Self::DeviceError,
         }
     }
 }
