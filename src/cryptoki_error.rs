@@ -5,10 +5,11 @@ use thiserror::Error;
 use crate::{
     communicator::communicator_error::CommunicatorError,
     cryptoki::bindings::{
-        CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_FUNCTION_FAILED,
+        CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
         CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID,
         CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CKR_SLOT_ID_INVALID, CK_RV,
     },
+    persistence::persistence_error::PersistenceError,
 };
 
 #[derive(Debug, Error)]
@@ -33,6 +34,8 @@ pub(crate) enum CryptokiError {
     TransportError,
     #[error("Slot ID is not valid")]
     SlotIdInvalid,
+    #[error("General device error")]
+    DeviceError,
 }
 
 impl CryptokiError {
@@ -48,6 +51,7 @@ impl CryptokiError {
             Self::FunctionFailed => CKR_FUNCTION_FAILED as CK_RV,
             Self::TransportError => CKR_GENERAL_ERROR as CK_RV,
             Self::SlotIdInvalid => CKR_SLOT_ID_INVALID as CK_RV,
+            Self::DeviceError => CKR_DEVICE_ERROR as CK_RV,
         }
     }
 }
@@ -70,5 +74,11 @@ impl From<CommunicatorError> for CryptokiError {
             CommunicatorError::ProcError(_) => Self::FunctionFailed,
             CommunicatorError::InvalidStatusError(_) => Self::TransportError,
         }
+    }
+}
+
+impl From<PersistenceError> for CryptokiError {
+    fn from(_value: PersistenceError) -> Self {
+        Self::DeviceError
     }
 }

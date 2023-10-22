@@ -101,7 +101,7 @@ impl StateAccessor {
             .ok_or(CryptokiError::SessionHandleInvalid)?;
 
         session
-            .get_object(*object_handle)
+            .get_object(*object_handle)?
             .ok_or(CryptokiError::ObjectHandleInvalid)
     }
 
@@ -293,7 +293,7 @@ impl StateAccessor {
             .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session_mut(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
-        Ok(session.create_object(object))
+        Ok(session.create_object(object)?)
     }
 
     pub(crate) fn create_ephemeral_object(
@@ -322,7 +322,7 @@ impl StateAccessor {
             .get_session_mut(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         session
-            .destroy_object(object_handle)
+            .destroy_object(object_handle)?
             .ok_or(CryptokiError::ObjectHandleInvalid)
     }
 

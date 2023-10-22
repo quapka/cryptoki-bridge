@@ -14,7 +14,7 @@ use crate::{
         CK_OBJECT_HANDLE,
     },
     cryptoki_error::CryptokiError,
-    persistence::cryptoki_repo::CryptokiRepo,
+    persistence::{cryptoki_repo::CryptokiRepo, persistence_error::PersistenceError},
     state::{
         object::{
             attribute::Attribute,
@@ -32,6 +32,8 @@ use crate::{
 const NIST_P256_EC_PARAMS_DER_HEX: &str = "06082a8648ce3d030107";
 static KEYPAIR_IDENTIFIER_FROM_PUBLIC_PREFIX_LENGTH: usize = 8;
 
+type ObjectSearchIterator = Chain<IntoIter<CK_OBJECT_HANDLE>, IntoIter<CK_OBJECT_HANDLE>>;
+
 /// Holds the current state of PKCS#11 lib
 pub(crate) struct Session {
     /// Holds the object managed by functions C_Digest*
@@ -39,8 +41,7 @@ pub(crate) struct Session {
 
     object_search: Option<ObjectSearch>,
 
-    // TODO: cast to into_iter
-    object_search_iterator: Option<Chain<IntoIter<CK_OBJECT_HANDLE>, IntoIter<CK_OBJECT_HANDLE>>>,
+    object_search_iterator: Option<ObjectSearchIterator>,
 
     // TODO: objects should be held by the token struct
     // TODO: also store token ID
@@ -171,10 +172,12 @@ impl Session {
         self.object_search = None;
     }
 
-    pub fn create_object(&mut self, object: Arc<dyn CryptokiObject>) -> CK_OBJECT_HANDLE {
-        // todo: error handling
-        let object_id = self.cryptoki_repo.store_object(object).unwrap();
-        self.handle_resolver.get_or_insert_object_handle(object_id)
+    pub fn create_object(
+        &mut self,
+        object: Arc<dyn CryptokiObject>,
+    ) -> Result<CK_OBJECT_HANDLE, PersistenceError> {
+        let object_id = self.cryptoki_repo.store_object(object)?;
+        Ok(self.handle_resolver.get_or_insert_object_handle(object_id))
     }
 
     pub fn create_ephemeral_object(&mut self, object: Arc<dyn CryptokiObject>) -> CK_OBJECT_HANDLE {
@@ -183,38 +186,35 @@ impl Session {
         self.handle_resolver.get_or_insert_object_handle(id)
     }
 
-    // TODO: custom error
     pub fn destroy_object(
         &mut self,
         object_handle: &CK_OBJECT_HANDLE,
-    ) -> Option<Arc<dyn CryptokiObject>> {
+    ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
         let Some(object_id) = self
             .handle_resolver
             .destroy_object_mapping(object_handle.clone())
         else {
-            return None;
+            return Ok(None);
         };
         let destroyed_object = self.ephemeral_objects.remove(&object_id);
         if destroyed_object.is_some() {
-            return destroyed_object;
+            return Ok(destroyed_object);
         }
-        let destroyed_object = self.cryptoki_repo.destroy_object(object_id).unwrap();
-        destroyed_object
+        self.cryptoki_repo.destroy_object(object_id)
     }
 
     pub(crate) fn get_object(
         &self,
         object_handle: CK_OBJECT_HANDLE,
-    ) -> Option<Arc<dyn CryptokiObject>> {
-        // TODO: error handling
+    ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
         let Some(object_id) = self.handle_resolver.get_object_id(object_handle) else {
-            return None;
+            return Ok(None);
         };
         let object = self.ephemeral_objects.get(&object_id);
         if object.is_some() {
-            return object.cloned();
+            return Ok(object.cloned());
         }
-        self.cryptoki_repo.get_object(object_id.clone()).unwrap()
+        self.cryptoki_repo.get_object(object_id.clone())
     }
 
     pub(crate) fn get_token(&self) -> TokenStore {
