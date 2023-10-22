@@ -40,17 +40,15 @@ impl SqliteCryptokiRepo {
 
     pub(crate) fn create_tables(&self) -> Result<(), PersistenceError> {
         let connection = self.connection.lock().unwrap();
-        connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS objects (
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS objects (
                 `id` BLOB PRIMARY KEY,
                 `class` INTEGER NOT NULL CHECK (class IN (1, 2, 3, 4)),
                 `label` BLOB,
                 `serialized_attributes` BLOB NOT NULL
             );",
-                (),
-            )
-            .unwrap();
+            (),
+        )?;
         Ok(())
     }
 
@@ -61,8 +59,7 @@ impl SqliteCryptokiRepo {
     ) -> Result<Vec<Arc<dyn CryptokiObject>>, PersistenceError> {
         let connection = &self.connection.lock().unwrap();
         let mut statement = connection
-            .prepare("SELECT id, class, label, serialized_attributes FROM objects WHERE (:label IS NULL OR label = :label) AND (:class IS NULL or class = :class)")
-            .unwrap();
+            .prepare("SELECT id, class, label, serialized_attributes FROM objects WHERE (:label IS NULL OR label = :label) AND (:class IS NULL or class = :class)")?;
         let rows = statement.query_map(
             named_params! {":label":label, ":class":class.map(|x| x as i32)},
             |row| -> Result<Arc<dyn CryptokiObject>, rusqlite::Error> {
@@ -81,17 +78,15 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         let connection = &self.connection.lock().unwrap();
         let mut statement = connection.prepare(
             "INSERT INTO objects (id, class, label, serialized_attributes) VALUES (?1, ?2, ?3, ?4)",
-        ).unwrap();
+        )?;
         let object_model = ObjectModel::from(object);
 
-        statement
-            .execute((
-                object_model.id.as_bytes(),
-                object_model.class as i32,
-                object_model.label,
-                object_model.serialized_attributes,
-            ))
-            .unwrap();
+        statement.execute((
+            object_model.id.as_bytes(),
+            object_model.class as i32,
+            object_model.label,
+            object_model.serialized_attributes,
+        ))?;
         Ok(object_model.id)
     }
 
@@ -102,11 +97,10 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         let connection = self.connection.lock().unwrap();
         let mut statement = connection.prepare(
             "DELETE FROM objects WHERE id = ?1 RETURNING id, class, label, serialized_attributes;",
-        ).unwrap();
+        )?;
 
-        let object_model = statement
-            .query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))
-            .unwrap();
+        let object_model =
+            statement.query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))?;
 
         Ok(Some(object_model.into()))
     }
@@ -115,13 +109,10 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         object_id: Uuid,
     ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
         let connection = self.connection.lock().unwrap();
-        let mut statement = connection
-            .prepare("SELECT * FROM objects WHERE id = ?1;")
-            .unwrap();
+        let mut statement = connection.prepare("SELECT * FROM objects WHERE id = ?1;")?;
 
-        let object_model = statement
-            .query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))
-            .unwrap();
+        let object_model =
+            statement.query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))?;
 
         Ok(Some(object_model.into()))
     }
