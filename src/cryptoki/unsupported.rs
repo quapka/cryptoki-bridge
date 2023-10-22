@@ -33,7 +33,7 @@ use super::bindings::*;
 /// }
 /// #[no_mangle]
 /// #[cfg(target_os = "windows")]
-/// pub extern "C" fn C_CloseAllSessions(slotID: CK_SLOT_ID) -> CK_RV {
+/// pub extern "system" fn C_CloseAllSessions(slotID: CK_SLOT_ID) -> CK_RV {
 ///     CKR_FUNCTION_NOT_SUPPORTED as CK_RV
 /// }
 /// ```
@@ -47,7 +47,7 @@ macro_rules! unsupported{
 
         #[no_mangle]
         #[cfg(target_os = "windows")]
-        pub extern "C" fn $function_name($($argument)*) -> CK_RV {
+        pub extern "system" fn $function_name($($argument)*) -> CK_RV {
             CKR_FUNCTION_NOT_SUPPORTED as CK_RV
         }
     }

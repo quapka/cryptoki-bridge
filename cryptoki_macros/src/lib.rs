@@ -12,10 +12,8 @@ pub fn cryptoki_function(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     let input = set_public_visibility(input);
 
-    // TODO: update the wrapper and use stdcall (or alternative) for windows,
-    // TODO: consider C-unwrap for linux
     let linux_input = add_extern_abi_modifier(input.clone(), "C");
-    let windows_input = add_extern_abi_modifier(input, "C");
+    let windows_input = add_extern_abi_modifier(input, "system");
 
     let expanded = quote! {
         #[no_mangle]

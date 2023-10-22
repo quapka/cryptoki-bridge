@@ -1,5 +1,6 @@
 extern crate bindgen;
 
+use bindgen::Abi;
 use std::env;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -34,6 +35,7 @@ fn generate_bindings() {
         .join(PKCS_11_SPEC_VERSION)
         .join("headers");
     let bindings = bindgen::Builder::default()
+        .set_platform_abi_type()
         .header("wrapper.h")
         .clang_arg(format!("-I{}", header_location.to_str().unwrap()))
         // Tell cargo to invalidate the built crate whenever any of the
@@ -47,4 +49,21 @@ fn generate_bindings() {
     bindings
         .write_to_file(out_file)
         .expect("Couldn't write bindings!");
+}
+
+trait AbiTypeOverrider {
+    fn set_platform_abi_type(self) -> Self;
+}
+
+impl AbiTypeOverrider for bindgen::Builder {
+    /// https://doc.rust-lang.org/nomicon/ffi.html#foreign-calling-conventions
+    #[cfg(target_os = "windows")]
+    fn set_platform_abi_type(self) -> Self {
+        self.override_abi(Abi::System, ".*")
+    }
+
+    #[cfg(target_os = "linux")]
+    fn set_platform_abi_type(self) -> Self {
+        self.override_abi(Abi::C, ".*")
+    }
 }
