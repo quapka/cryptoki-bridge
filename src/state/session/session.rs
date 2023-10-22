@@ -13,6 +13,7 @@ use crate::{
         CKA_LABEL, CKA_VALUE, CKK_ECDSA, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY, CK_FALSE,
         CK_OBJECT_HANDLE,
     },
+    cryptoki_error::CryptokiError,
     persistence::cryptoki_repo::CryptokiRepo,
     state::{
         object::{
@@ -220,10 +221,12 @@ impl Session {
         self.token.clone()
     }
 
-    // TODO: return an error if search not innited
-    pub fn get_filtered_handles(&mut self, object_count: usize) -> Vec<CK_OBJECT_HANDLE> {
+    pub fn get_filtered_handles(
+        &mut self,
+        object_count: usize,
+    ) -> Result<Vec<CK_OBJECT_HANDLE>, CryptokiError> {
         let Some(object_search) = self.object_search.as_ref() else {
-            return vec![]; // TODO: return error
+            return Err(CryptokiError::OperationNotInitialized);
         };
         if self.object_search_iterator.is_none() {
             let ephemeral_objects = self
@@ -247,11 +250,13 @@ impl Session {
                     .chain(ephemeral_objects),
             )
         }
-        self.object_search_iterator
+        let handles = self
+            .object_search_iterator
             .as_mut()
             .unwrap()
             .take(object_count)
-            .collect()
+            .collect();
+        Ok(handles)
     }
 
     pub fn set_encryptor(&mut self, encryptor: Aes128) {

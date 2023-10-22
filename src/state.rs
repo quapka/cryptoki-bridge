@@ -377,7 +377,7 @@ impl StateAccessor {
             .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session_mut(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
-        Ok(session.get_filtered_handles(count))
+        session.get_filtered_handles(count)
     }
 
     pub(crate) fn set_signer(
