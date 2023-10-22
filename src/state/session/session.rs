@@ -26,7 +26,7 @@ use crate::{
         },
         slots::TokenStore,
     },
-    utils::format_public_key,
+    utils::as_der_octet_string,
 };
 
 const NIST_P256_EC_PARAMS_DER_HEX: &str = "06082a8648ce3d030107";
@@ -343,7 +343,7 @@ fn get_communicator_public_key_template(token_label: &str, public_key: Attribute
     let mut attributes = vec![
         Attribute::from_parts(CKA_KEY_TYPE, CKK_ECDSA),
         Attribute::from_parts(CKA_EC_PARAMS, ec_params),
-        Attribute::from_parts(CKA_EC_POINT, format_public_key(public_key)),
+        Attribute::from_parts(CKA_EC_POINT, as_der_octet_string(&public_key)),
         Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
     ];
     attributes.append(&mut common_attributes);
