@@ -18,6 +18,10 @@ use super::{
     slot_token::{C_GetSlotInfo, C_GetSlotList, C_GetTokenInfo},
     unsupported,
 };
+use crate::package_info::{
+    IMPLEMENTATION_MAJOR_VERSION, IMPLEMENTATION_MINOR_VERSION, STANDARD_MAJOR_VERSION,
+    STANDARD_MINOR_VERSION,
+};
 use crate::state::StateAccessor;
 
 /// Initializes the Cryptoki library
@@ -26,9 +30,7 @@ use crate::state::StateAccessor;
 ///
 /// * `pInitArgs` - either has the value NULL_PTR or points to a CK_C_INITIALIZE_ARGS structure containing information on how the library should deal with multi-threaded access
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Initialize(pInitArgs: CK_VOID_PTR) -> CK_RV {
-    // TODO: check later if some actions are required
-
+pub fn C_Initialize(_pInitArgs: CK_VOID_PTR) -> CK_RV {
     let state_accessor = StateAccessor::new();
     if let Err(err) = state_accessor.initialize_state() {
         return err.into_ck_rv();
@@ -61,11 +63,17 @@ pub fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
     let info = CK_INFO {
-        cryptokiVersion: CK_VERSION { major: 0, minor: 1 },
+        cryptokiVersion: CK_VERSION {
+            major: STANDARD_MAJOR_VERSION,
+            minor: STANDARD_MINOR_VERSION,
+        },
         manufacturerID: [0; 32],
         flags: 0,
         libraryDescription: [0; 32],
-        libraryVersion: CK_VERSION { major: 0, minor: 1 },
+        libraryVersion: CK_VERSION {
+            major: IMPLEMENTATION_MAJOR_VERSION,
+            minor: IMPLEMENTATION_MINOR_VERSION,
+        },
     };
     unsafe {
         *pInfo = info;
@@ -83,7 +91,10 @@ pub fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
     if ppFunctionList.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
-    let version = CK_VERSION { major: 0, minor: 1 };
+    let version = CK_VERSION {
+        major: STANDARD_MAJOR_VERSION,
+        minor: STANDARD_MINOR_VERSION,
+    };
     let function_list = CK_FUNCTION_LIST {
         version,
         C_Initialize: Some(C_Initialize),
@@ -156,7 +167,6 @@ pub fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
         C_WaitForSlotEvent: Some(unsupported::C_WaitForSlotEvent),
     };
 
-    // TODO: should we allocate memory?
     unsafe {
         *ppFunctionList = libc::malloc(mem::size_of::<CK_FUNCTION_LIST>() as libc::size_t)
             as *mut CK_FUNCTION_LIST;

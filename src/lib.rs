@@ -7,6 +7,11 @@ mod cryptoki_error;
 mod persistence;
 pub(crate) mod state;
 pub(crate) mod utils;
+pub(crate) mod package_info {
+    include!(concat!(env!("OUT_DIR"), "/package_info.rs"));
+    pub const STANDARD_MAJOR_VERSION: u8 = 2;
+    pub const STANDARD_MINOR_VERSION: u8 = 4;
+}
 
 use crate::{
     communicator::Communicator,

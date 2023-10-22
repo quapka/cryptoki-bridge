@@ -48,14 +48,14 @@ impl Token for MeesignToken {
             ulFreePublicMemory: 1 << 20,
             ulTotalPrivateMemory: 1 << 20,
             ulFreePrivateMemory: 1 << 20,
-            hardwareVersion: CK_VERSION { major: 0, minor: 1 },
-            firmwareVersion: CK_VERSION { major: 0, minor: 1 },
+            hardwareVersion: CK_VERSION { major: 0, minor: 0 },
+            firmwareVersion: CK_VERSION { major: 0, minor: 0 },
             utcTime: Self::get_utc_time(),
         }
     }
 
     fn get_slot_info(&self) -> CK_SLOT_INFO {
-        let version = CK_VERSION { major: 0, minor: 1 };
+        let version = CK_VERSION { major: 0, minor: 0 };
         CK_SLOT_INFO {
             slotDescription: self.create_slot_description(),
             manufacturerID: Default::default(),
