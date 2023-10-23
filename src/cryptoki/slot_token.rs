@@ -86,6 +86,12 @@ pub fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
     CKR_OK as CK_RV
 }
 
+/// Obtains information about a particular slot in the system
+///
+/// # Arguments
+///
+/// * `slotID` - the ID of the slot
+/// * `pInfo` - points to the location that receives the slot information
 #[cryptoki_macros::cryptoki_function]
 pub fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
