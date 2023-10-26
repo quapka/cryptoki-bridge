@@ -57,6 +57,11 @@ pub fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
     CKR_OK as CK_RV
 }
 
+/// Returns general information about Cryptoki
+///
+/// # Arguments
+///
+/// * `pInfo` - points to the location that receives the information
 #[cryptoki_macros::cryptoki_function]
 pub fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
