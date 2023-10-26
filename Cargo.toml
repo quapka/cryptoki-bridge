@@ -23,7 +23,7 @@ assets = [
 
 [features]
 default = []
-mocked_meesign = ["dep:p256"]
+mocked_communicator = ["dep:p256"]
 
 [lib]
 name = "cryptoki_bridge"

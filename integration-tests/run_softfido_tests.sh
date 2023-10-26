@@ -10,7 +10,7 @@ cleanup() {
 
 build-cryptoki() {
     cd ..
-    cargo build --features=mocked_meesign
+    cargo build --features=mocked_communicator
     cd -
 }
 

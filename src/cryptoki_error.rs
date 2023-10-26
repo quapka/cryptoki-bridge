@@ -65,7 +65,7 @@ impl<S> From<PoisonError<S>> for CryptokiError {
 impl From<CommunicatorError> for CryptokiError {
     fn from(value: CommunicatorError) -> Self {
         match value {
-            #[cfg(feature = "mocked_meesign")]
+            #[cfg(feature = "mocked_communicator")]
             CommunicatorError::CryptographicError(_) => Self::FunctionFailed,
             CommunicatorError::TransportError(_) => Self::TransportError,
             CommunicatorError::InvalidConfigurationError(_) => Self::FunctionFailed,
