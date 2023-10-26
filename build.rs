@@ -11,13 +11,19 @@ static PROTO_INPUT_DIRECTORY: &str = "proto";
 static PROTO_INPUT_FILE: &str = "mpc.proto";
 static PKCS_11_SPEC_VERSION: &str = "v3.0";
 static PKCS_11_HEADERS_DIRECTORY: &str = "PKCS11-SPECS";
+static PKCS_11_WRAPPER_HEADER: &str = "wrapper.h";
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() {
     set_package_info().expect("Could not set package info");
 
-    generate_bindings();
+    let header_location = PathBuf::from(PKCS_11_HEADERS_DIRECTORY)
+        .join(PKCS_11_SPEC_VERSION)
+        .join("headers");
+
+    generate_bindings(header_location, PKCS_11_WRAPPER_HEADER).expect("Couldn't generate bindings");
 
     compile_protofiles(PROTO_INPUT_DIRECTORY, PROTO_INPUT_FILE)
+        .expect("Couldn't compile protofiles");
 }
 
 fn compile_protofiles(
@@ -32,35 +38,40 @@ fn compile_protofiles(
     Ok(())
 }
 
-fn generate_bindings() {
+/// Generates bindings from the spec PKCS#11 header files
+///
+/// # Arguments
+///
+/// * `header_location` - The location of the PKCS#11 header files
+/// * `header_file` - The name of the header file to generate bindings from
+fn generate_bindings(header_location: PathBuf, header_file: &str) -> Result<(), Box<dyn Error>> {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
-    println!("cargo:rerun-if-changed=wrapper.h");
-    let header_location = PathBuf::from(PKCS_11_HEADERS_DIRECTORY)
-        .join(PKCS_11_SPEC_VERSION)
-        .join("headers");
+    println!("cargo:rerun-if-changed={PKCS_11_WRAPPER_HEADER}");
+
     let bindings = bindgen::Builder::default()
         .set_platform_abi_type()
-        .header("wrapper.h")
+        .header(header_file)
         .clang_arg(format!("-I{}", header_location.to_str().unwrap()))
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
-        .generate()
-        .expect("Unable to generate bindings");
+        .generate()?;
 
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR not set by cargo"));
+    let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     let out_file = out_dir.join("bindings.rs");
-    bindings
-        .write_to_file(out_file)
-        .expect("Couldn't write bindings!");
+    bindings.write_to_file(out_file)?;
+    Ok(())
 }
 
+/// Enables us to specify what kind of ABI we want to generate.
+///
+/// For more information on FFI, see:
+/// https://doc.rust-lang.org/nomicon/ffi.html#foreign-calling-conventions
 trait AbiTypeOverrider {
     fn set_platform_abi_type(self) -> Self;
 }
 
 impl AbiTypeOverrider for bindgen::Builder {
-    /// https://doc.rust-lang.org/nomicon/ffi.html#foreign-calling-conventions
     #[cfg(target_os = "windows")]
     fn set_platform_abi_type(self) -> Self {
         self.override_abi(Abi::System, ".*")
@@ -72,6 +83,7 @@ impl AbiTypeOverrider for bindgen::Builder {
     }
 }
 
+/// Creates an rs source file that contains the package info variables.
 fn set_package_info() -> Result<(), Box<dyn Error>> {
     let version = env!("CARGO_PKG_VERSION");
 
@@ -89,8 +101,8 @@ fn set_package_info() -> Result<(), Box<dyn Error>> {
     let minor_version = format!("pub const IMPLEMENTATION_MINOR_VERSION: u8 = {minor};\n",);
 
     let out_dir = env::var("OUT_DIR")?;
-    let dest_path = format!("{}/package_info.rs", out_dir);
-    let mut file = File::create(&dest_path)?;
+    let package_info_filepath = format!("{}/package_info.rs", out_dir);
+    let mut file = File::create(&package_info_filepath)?;
     file.write_all(major_version.as_bytes())?;
     file.write_all(minor_version.as_bytes())?;
     Ok(())
