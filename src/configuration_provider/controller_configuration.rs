@@ -32,9 +32,13 @@ impl ConfigurationProvider for ControllerConfiguration {
         &self,
     ) -> Result<InterfaceConfiguration, ConfigurationProviderError> {
         let effective_interface_type = self.effective_interface_type.to_interface_string();
-
+        let tool_parameter = self
+            .tool_name
+            .as_ref()
+            .map(|tool_name| format!("tool={}", tool_name))
+            .unwrap_or_default();
         let configuration: InterfaceConfiguration = reqwest::blocking::get(format!(
-            "http://www.localhost:{CONTROLLER_PORT}/{effective_interface_type}/configuration"
+            "http://www.localhost:{CONTROLLER_PORT}/{effective_interface_type}/configuration?{tool_parameter}"
         ))?
         .json()?;
         Ok(configuration)
