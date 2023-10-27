@@ -1,40 +1,20 @@
-use std::{env::VarError, error::Error, fmt::Display};
+use std::env::VarError;
 
 use hex::FromHexError;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub(crate) enum ConfigurationProviderError {
-    ValueNotSet,
+    #[error("Value was not set")]
+    ValueNotSet(#[from] VarError),
+    #[error("Value is in incorrect format")]
     InvalidFormat,
-    ReqwestError(reqwest::Error),
-}
-
-impl Error for ConfigurationProviderError {}
-
-impl Display for ConfigurationProviderError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ValueNotSet => write!(f, "Configuration error: Value was not set"),
-            Self::InvalidFormat => write!(f, "Configuration error: Vale is in incorrect format"),
-            Self::ReqwestError(error) => write!(f, "Reqwset error: {}", error),
-        }
-    }
+    #[error("Reqwest error: {0}")]
+    ReqwestError(#[from] reqwest::Error),
 }
 
 impl From<FromHexError> for ConfigurationProviderError {
     fn from(_value: FromHexError) -> Self {
         Self::InvalidFormat
-    }
-}
-
-impl From<VarError> for ConfigurationProviderError {
-    fn from(_value: VarError) -> Self {
-        Self::ValueNotSet
-    }
-}
-
-impl From<reqwest::Error> for ConfigurationProviderError {
-    fn from(value: reqwest::Error) -> Self {
-        Self::ReqwestError(value)
     }
 }

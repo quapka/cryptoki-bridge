@@ -4,6 +4,9 @@ use thiserror::Error;
 
 use crate::{
     communicator::communicator_error::CommunicatorError,
+    configuration_provider::{
+        configuration_provider_error::ConfigurationProviderError, ConfigurationProvider,
+    },
     cryptoki::bindings::{
         CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
         CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID,
@@ -79,6 +82,12 @@ impl From<CommunicatorError> for CryptokiError {
 
 impl From<PersistenceError> for CryptokiError {
     fn from(_value: PersistenceError) -> Self {
+        Self::DeviceError
+    }
+}
+
+impl From<ConfigurationProviderError> for CryptokiError {
+    fn from(_value: ConfigurationProviderError) -> Self {
         Self::DeviceError
     }
 }

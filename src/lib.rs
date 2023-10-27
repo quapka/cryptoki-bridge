@@ -15,16 +15,17 @@ pub(crate) mod package_info {
 
 use crate::{
     communicator::Communicator,
-    configuration_provider::root_configuration::RootConfiguration,
+    configuration_provider::ConfigurationProvider,
     state::{session::sessions::Sessions, slots::Slots},
 };
 use lazy_static::lazy_static;
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use tokio::runtime::Runtime;
 
 lazy_static! {
     pub(crate) static ref SLOTS: RwLock<Option<Slots>> = RwLock::new(None);
-    pub(crate) static ref CONFIGURATION: RwLock<Option<RootConfiguration>> = RwLock::new(None);
+    pub(crate) static ref CONFIGURATION: RwLock<Option<Arc<dyn ConfigurationProvider>>> =
+        RwLock::new(None);
     pub(crate) static ref SESSIONS: RwLock<Option<Sessions>> = RwLock::new(None);
     pub(crate) static ref RUNTIME: RwLock<Option<Runtime>> = RwLock::new(None);
     pub(crate) static ref COMMUNICATOR: Mutex<Option<Box<dyn Communicator>>> = Mutex::new(None);

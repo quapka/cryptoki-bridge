@@ -9,7 +9,7 @@ use crate::{
     },
     configuration_provider::{
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
-        root_configuration::RootConfiguration, ConfigurationProvider,
+        ConfigurationProvider,
     },
     cryptoki::bindings::{
         CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,
@@ -142,9 +142,15 @@ impl StateAccessor {
     pub(crate) fn initialize_state(&self) -> Result<(), CryptokiError> {
         ensure_file_structure()?;
 
-        let configuration = RootConfiguration::new()
-            .add_provider(Box::new(ControllerConfiguration::new()))
-            .add_provider(Box::new(EnvConfiguration::new()));
+        let env_configuration = EnvConfiguration::new().map_err(|err| {
+            eprintln!("Env configuration is not done properly: {:?}", err);
+            CryptokiError::DeviceError
+        })?;
+
+        let configuration: Arc<dyn ConfigurationProvider> = match env_configuration {
+            Some(env_configuration) => Arc::new(env_configuration),
+            None => Arc::new(ControllerConfiguration::new()),
+        };
 
         let runtime = Runtime::new().unwrap();
 
@@ -414,17 +420,12 @@ impl StateAccessor {
     #[cfg(not(feature = "mocked_communicator"))]
     fn get_communicator(
         &self,
-        configuration: &RootConfiguration,
+        configuration: &Arc<dyn ConfigurationProvider>,
         runtime: &Runtime,
     ) -> Result<Box<dyn Communicator>, CryptokiError> {
-        let hostname = configuration
-            .get_communicator_url()
-            .unwrap()
-            .expect("Coudln't get communicator URL");
-        let certificate_path = configuration
-            .get_communicator_certificate_path()
-            .unwrap()
-            .expect("Couldn't get meesign CA certificate path");
+        let configuration = configuration.get_interface_configuration()?;
+        let hostname = configuration.get_communicator_url().into();
+        let certificate_path = configuration.get_communicator_certificate_path();
         let cert = Certificate::from_pem(std::fs::read(certificate_path).unwrap());
 
         let meesign =
@@ -435,7 +436,7 @@ impl StateAccessor {
     #[cfg(feature = "mocked_communicator")]
     fn get_communicator(
         &self,
-        _configuration: &RootConfiguration,
+        _configuration: &Arc<dyn ConfigurationProvider>,
         _runtime: &Runtime,
     ) -> Result<Box<dyn Communicator>, CryptokiError> {
         use crate::communicator::mocked_communicator::MockedMeesign;
