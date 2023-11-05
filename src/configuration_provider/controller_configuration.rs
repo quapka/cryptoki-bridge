@@ -36,6 +36,7 @@ impl ConfigurationProvider for ControllerConfiguration {
         let tool_parameter = self
             .tool_name
             .as_ref()
+            .map(map_auxiliary_tools)
             .map(|tool_name| format!("tool={}", tool_name))
             .unwrap_or_default();
         let configuration: InterfaceConfigurationResponse = reqwest::blocking::get(format!(
@@ -76,5 +77,20 @@ impl fmt::Display for EffectiveInterfaceType {
             Self::WebAuthn => write!(f, "WebAuthn"),
             Self::Cryptoki => write!(f, "Cryptoki"),
         }
+    }
+}
+
+/// Maps names of auxiliary tools to the actual tool names, e.g.,
+/// `ssh-keygen` will be mapped to `ssh`, otherwise the user would
+/// have to configure multiple configurations for auxiliary tools.
+/// TODO: this needs some brainstorming and potentially feedback from the users
+///
+/// # Arguments
+///
+/// * `tool_name` - The name of the tool to map.
+fn map_auxiliary_tools(tool_name: &String) -> String {
+    match tool_name.as_str() {
+        "ssh-keygen" => "ssh".to_string(),
+        _ => tool_name.into(),
     }
 }
