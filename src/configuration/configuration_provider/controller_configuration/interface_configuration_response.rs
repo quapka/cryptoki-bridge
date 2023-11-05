@@ -2,6 +2,7 @@ use serde::Deserialize;
 
 use crate::communicator::GroupId;
 
+/// Used to deserialize the response from the controller server
 #[derive(Deserialize, Clone)]
 pub(crate) struct InterfaceConfigurationResponse {
     communicator_hostname: String,

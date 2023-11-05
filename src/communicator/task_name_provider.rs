@@ -1,5 +1,6 @@
+use crate::configuration::EffectiveInterfaceType;
+
 use super::communicator_error::CommunicatorError;
-use crate::configuration_provider::controller_configuration::EffectiveInterfaceType;
 
 pub(crate) struct TaskNameProvider {}
 

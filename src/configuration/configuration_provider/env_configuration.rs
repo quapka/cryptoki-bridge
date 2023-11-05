@@ -1,17 +1,18 @@
 use std::env::{self, VarError};
 
-use crate::communicator::GroupId;
-
-use super::{
-    configuration_provider_error::ConfigurationProviderError,
-    interface_configuration::InterfaceConfiguration, ConfigurationProvider,
+use crate::{
+    communicator::GroupId, configuration::interface_configuration::InterfaceConfiguration,
 };
+
+use super::{configuration_provider_error::ConfigurationProviderError, ConfigurationProvider};
 
 static COMMUNICATOR_HOSTNAME_ENV_NAME: &str = "COMMUNICATOR_HOSTNAME";
 static GROUP_ID_ENV_NAME: &str = "GROUP_ID";
 static COMMUNICATOR_CERTIFICATE_PATH_ENV_NAME: &str = "COMMUNICATOR_CERTIFICATE_PATH";
 
+/// Provides configuration from the environment variables
 pub(crate) struct EnvConfiguration {
+    /// Configuration acquired from the env variables
     configuration: InterfaceConfiguration,
 }
 
@@ -37,6 +38,8 @@ impl EnvConfiguration {
         let cert_path = Self::get_communicator_certificate_path();
         let group_id = Self::get_group_id();
 
+        // either allow none of the options specified, then we return None, or make sure
+        // that the hostname and cert_path are correctly specified
         let configuration = match (hostname, cert_path, group_id) {
             (Ok(hostname), Ok(cert_path), Ok(group_id)) => {
                 InterfaceConfiguration::new(hostname, group_id, cert_path)

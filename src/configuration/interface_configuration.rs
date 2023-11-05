@@ -2,8 +2,9 @@ use serde::Deserialize;
 
 use crate::communicator::GroupId;
 
-use super::interface_configuration_response::InterfaceConfigurationResponse;
+use super::configuration_provider::controller_configuration::InterfaceConfigurationResponse;
 
+/// A model holding interface configuration attributes
 #[derive(Deserialize, Clone)]
 pub(crate) struct InterfaceConfiguration {
     communicator_hostname: String,

@@ -2,10 +2,9 @@ use crate::{
     communicator::{
         group::Group, meesign::Meesign, AuthResponse, Communicator, GroupId, RequestData, TaskId,
     },
-    configuration_provider::{
-        configuration_provider_error::ConfigurationProviderError,
-        controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
-        ConfigurationProvider,
+    configuration::{
+        ConfigurationProvider, ConfigurationProviderError, ControllerConfiguration,
+        EnvConfiguration,
     },
     cryptoki::bindings::{
         CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,

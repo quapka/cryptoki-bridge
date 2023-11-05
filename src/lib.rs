@@ -1,7 +1,7 @@
 extern crate libc;
 
 pub(crate) mod communicator;
-pub(crate) mod configuration_provider;
+mod configuration;
 pub mod cryptoki;
 mod cryptoki_error;
 mod persistence;
@@ -15,7 +15,7 @@ pub(crate) mod package_info {
 
 use crate::{
     communicator::Communicator,
-    configuration_provider::ConfigurationProvider,
+    configuration::ConfigurationProvider,
     state::{session::sessions::Sessions, slots::Slots},
 };
 use lazy_static::lazy_static;

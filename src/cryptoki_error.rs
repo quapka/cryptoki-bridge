@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use crate::{
     communicator::communicator_error::CommunicatorError,
-    configuration_provider::configuration_provider_error::ConfigurationProviderError,
+    configuration::ConfigurationProviderError,
     cryptoki::bindings::{
         CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
         CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID,

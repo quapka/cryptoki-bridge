@@ -1,19 +1,23 @@
-use core::fmt;
-use std::env;
+mod interface_configuration_response;
 
-use crate::communicator::task_name_provider::get_binary_name;
-
-use super::{
-    configuration_provider_error::ConfigurationProviderError,
-    interface_configuration::InterfaceConfiguration,
-    interface_configuration_response::InterfaceConfigurationResponse, ConfigurationProvider,
+use crate::{
+    communicator::task_name_provider::get_binary_name,
+    configuration::{interface_configuration::InterfaceConfiguration, EffectiveInterfaceType},
 };
 
-static CONTROLLER_PORT: &str = "11115";
-static IS_INTERFACE_USED_FOR_FIDO_ENV_NAME: &str = "USED_AS_FIDO";
+pub(crate) use self::interface_configuration_response::InterfaceConfigurationResponse;
 
+use super::{configuration_provider_error::ConfigurationProviderError, ConfigurationProvider};
+
+static CONTROLLER_PORT: &str = "11115";
+
+/// Provides the configuration from the controller component
+/// that was configured by the user
 pub(crate) struct ControllerConfiguration {
+    /// Current effective interface type, e.g., Cryptoki
     effective_interface_type: EffectiveInterfaceType,
+
+    /// Name of the tool that is using the library, e.g., ssh
     tool_name: Option<String>,
 }
 
@@ -44,39 +48,6 @@ impl ConfigurationProvider for ControllerConfiguration {
         ))?
         .json()?;
         Ok(configuration.into())
-    }
-}
-
-#[derive(Eq, PartialEq)]
-pub(crate) enum EffectiveInterfaceType {
-    WebAuthn,
-    Cryptoki,
-}
-
-impl EffectiveInterfaceType {
-    pub(crate) fn from_environment() -> Self {
-        let is_interface_used_for_fido = env::var(IS_INTERFACE_USED_FOR_FIDO_ENV_NAME).is_ok();
-        if is_interface_used_for_fido {
-            Self::WebAuthn
-        } else {
-            Self::Cryptoki
-        }
-    }
-
-    fn to_interface_string(&self) -> &str {
-        match self {
-            Self::WebAuthn => "webauthn",
-            Self::Cryptoki => "cryptoki",
-        }
-    }
-}
-
-impl fmt::Display for EffectiveInterfaceType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::WebAuthn => write!(f, "WebAuthn"),
-            Self::Cryptoki => write!(f, "Cryptoki"),
-        }
     }
 }
 
