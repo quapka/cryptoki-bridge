@@ -47,6 +47,9 @@ jobs:
           sudo apt-get update 
           sudo apt-get install --assume-yes valgrind clang libc6-dbg openssl
 
+      - name: Run cargo clippy
+        run: cargo clippy --all-targets -- -D warnings
+
       - name: Build
         run: cargo build --verbose --features mocked_communicator
 
