@@ -3,14 +3,17 @@ use std::{collections::HashMap, sync::Arc};
 use rand::{rngs::OsRng, Rng};
 
 use crate::{
-    cryptoki::bindings::CK_SESSION_HANDLE, persistence::cryptoki_repo::CryptokiRepo,
-    state::slots::TokenStore,
+    cryptoki::bindings::CK_SESSION_HANDLE, persistence::CryptokiRepo, state::slots::TokenStore,
 };
 
 use super::single_session::Session;
 
+/// Holds currently-open sessions and provides access to the objects stored in the DB.
 pub(crate) struct Sessions {
+    /// Currently open sessions
     sessions: HashMap<CK_SESSION_HANDLE, Session>,
+
+    /// A repository for accessing the database
     cryptoki_repo: Arc<dyn CryptokiRepo>,
 }
 
@@ -21,6 +24,7 @@ impl Sessions {
             cryptoki_repo,
         }
     }
+
     fn generate_session_handle(&self) -> CK_SESSION_HANDLE {
         OsRng.gen_range(0..CK_SESSION_HANDLE::MAX)
     }

@@ -11,7 +11,7 @@ use crate::{
         CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,
     },
     cryptoki_error::CryptokiError,
-    persistence::sqlite_cryptoki_repo::SqliteCryptokiRepo,
+    persistence::SqliteCryptokiRepo,
     COMMUNICATOR, CONFIGURATION, RUNTIME, SESSIONS, SLOTS,
 };
 use aes::Aes128;
