@@ -2,6 +2,7 @@ use crate::configuration::EffectiveInterfaceType;
 
 use super::communicator_error::CommunicatorError;
 
+/// Provides names for tasks delegated to the communicator
 pub(crate) struct TaskNameProvider {}
 
 impl TaskNameProvider {
@@ -9,6 +10,12 @@ impl TaskNameProvider {
         Self {}
     }
 
+    /// Returns a task name informing using which interface the authentication
+    /// request was created with, which tool, and in some cases, for which domain.
+    ///
+    /// # Arguments
+    ///
+    /// * `originator` - Optional originator of the request, e.g., domain name
     pub(crate) fn get_task_name(&self, originator: Option<String>) -> String {
         let effective_interface_type = EffectiveInterfaceType::from_environment();
         let binary_name = get_binary_name().unwrap_or(None);

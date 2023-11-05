@@ -1,28 +1,31 @@
+mod proto {
+    tonic::include_proto!("meesign");
+}
+
 use tokio::time;
 use tonic::{
     async_trait,
     transport::{Certificate, Channel, ClientTlsConfig, Uri},
 };
 
-use crate::communicator::meesign::proto::{mpc_client::MpcClient, GroupsRequest, KeyType};
 use std::{str::FromStr, time::Duration};
+
+use crate::communicator::meesign::proto::{mpc_client::MpcClient, GroupsRequest, KeyType};
+use crate::communicator::AuthResponse;
 
 use self::proto::{task::TaskState, SignRequest, TaskRequest};
 use super::{
     communicator_error::CommunicatorError, group::Group, task_name_provider::TaskNameProvider,
     Communicator, GroupId, RequestData, TaskId,
 };
-use crate::communicator::AuthResponse;
 
-mod proto {
-    tonic::include_proto!("meesign");
-}
+static MAX_ATTEMPT_COUNT: usize = 60 * 2 / ATTEMPT_SLEEP_SEC as usize;
+static ATTEMPT_SLEEP_SEC: u64 = 3;
+
+/// Communicates with the MeeSign server
 pub(crate) struct Meesign {
     client: MpcClient<Channel>,
 }
-
-static MAX_ATTEMPT_COUNT: usize = 10;
-static ATTEMPT_SLEEP_SEC: u64 = 5;
 
 impl Meesign {
     pub async fn new(
@@ -42,6 +45,7 @@ impl Meesign {
         Ok(Self { client })
     }
 }
+
 #[async_trait]
 impl Communicator for Meesign {
     async fn get_groups(&mut self) -> Result<Vec<Group>, CommunicatorError> {

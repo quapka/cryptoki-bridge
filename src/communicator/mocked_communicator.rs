@@ -8,6 +8,12 @@ use tonic::async_trait;
 
 type GroupPublicKey = ByteVector;
 
+/// MockedMeesign is used for integration tests in CI/CD.
+/// The struct should never be used to perform cryptographic operations.
+/// This whole module compiles only for debug builds to ensure the security.
+///
+/// Currently, it mockes MeeSign by providing a single authentication group,
+/// and signing all authentication requests.
 pub(crate) struct MockedMeesign {
     group_name: String,
     group_public_key: GroupPublicKey,
@@ -17,8 +23,9 @@ pub(crate) struct MockedMeesign {
 
 impl MockedMeesign {
     pub(crate) fn new(group_name: String) -> Self {
-        // note: this temporary solution is behind a test feature flag and it never gets into the final binary
-
+        /// As we don't want to pollute the DB during integration tests,
+        /// which could result in security issues,
+        /// we use a fixxed secret
         let private_key = SigningKey::from_bytes(&GenericArray::clone_from_slice(
             &hex::decode("4240f6938ad911b47a56bed000483410a83d2e0e7f0b669d022ee2b2aca68470")
                 .unwrap(),
