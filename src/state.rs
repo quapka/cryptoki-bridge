@@ -424,7 +424,7 @@ impl StateAccessor {
         runtime: &Runtime,
     ) -> Result<Box<dyn Communicator>, CryptokiError> {
         let configuration = configuration.get_interface_configuration()?;
-        let hostname = configuration.get_communicator_url().into();
+        let hostname = configuration.get_communicator_hostname().into();
         let certificate_path = configuration.get_communicator_certificate_path();
         let cert = Certificate::from_pem(std::fs::read(certificate_path).unwrap());
 
