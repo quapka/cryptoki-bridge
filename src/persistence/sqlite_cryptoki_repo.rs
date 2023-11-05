@@ -7,10 +7,7 @@ use rusqlite::{named_params, Connection, OpenFlags};
 use uuid::Uuid;
 
 use crate::{
-    cryptoki::bindings::{
-        CKA_CLASS, CKA_LABEL, CKO_DATA, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY, CKO_SECRET_KEY,
-        CK_ATTRIBUTE_TYPE,
-    },
+    cryptoki::bindings::{CKA_LABEL, CK_ATTRIBUTE_TYPE},
     state::object::{
         cryptoki_object::{AttributeValue, CryptokiObject},
         object_class::ObjectClass,
@@ -19,27 +16,31 @@ use crate::{
 };
 
 use super::{
-    cryptoki_repo::CryptokiRepo, models::ObjectModel, persistence_error::PersistenceError,
+    cryptoki_repo::CryptokiRepo,
+    models::{try_object_model_from_cryptoki_object, ObjectModel},
+    persistence_error::PersistenceError,
 };
 
+/// SQLite implementation of the Cryptoki repository trait
 pub(crate) struct SqliteCryptokiRepo {
+    /// A single connection to the SQLite database
     connection: Arc<Mutex<Connection>>,
 }
 
 impl SqliteCryptokiRepo {
-    pub fn new(cryptoki_directory: PathBuf) -> Self {
+    pub fn new(cryptoki_directory: PathBuf) -> Result<Self, PersistenceError> {
         static CRYPTOKI_BRIDGE_DB_FILE: &str = "cryptoki-bridge.db";
         let cryptoki_sqlite_db = cryptoki_directory.join(CRYPTOKI_BRIDGE_DB_FILE);
         let cryptoki_sqlite_db = cryptoki_sqlite_db.to_str().unwrap();
         let flags = OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_READ_WRITE;
-        let connection = Arc::new(Mutex::new(
-            Connection::open_with_flags(cryptoki_sqlite_db, flags).unwrap(),
-        ));
-        Self { connection }
+        let connection = Connection::open_with_flags(cryptoki_sqlite_db, flags)?;
+        let connection = Arc::new(Mutex::new(connection));
+        Ok(Self { connection })
     }
 
+    /// Initializes the database schema
     pub(crate) fn create_tables(&self) -> Result<(), PersistenceError> {
-        let connection = self.connection.lock().unwrap();
+        let connection = self.connection.lock()?;
         connection.execute(
             "CREATE TABLE IF NOT EXISTS objects (
                 `id` BLOB PRIMARY KEY,
@@ -52,12 +53,14 @@ impl SqliteCryptokiRepo {
         Ok(())
     }
 
+    /// Fetches objects from the DB that match the supplied label or class.
+    /// If any of the values is not supplied, the filter is ignored.
     fn filter_objects_in_db(
         &self,
         label: Option<AttributeValue>,
         class: Option<ObjectClass>,
     ) -> Result<Vec<Arc<dyn CryptokiObject>>, PersistenceError> {
-        let connection = &self.connection.lock().unwrap();
+        let connection = &self.connection.lock()?;
         let mut statement = connection
             .prepare("SELECT id, class, label, serialized_attributes FROM objects WHERE (:label IS NULL OR label = :label) AND (:class IS NULL or class = :class)")?;
         let rows = statement.query_map(
@@ -75,11 +78,11 @@ impl SqliteCryptokiRepo {
 
 impl CryptokiRepo for SqliteCryptokiRepo {
     fn store_object(&self, object: Arc<dyn CryptokiObject>) -> Result<Uuid, PersistenceError> {
-        let connection = &self.connection.lock().unwrap();
+        let connection = &self.connection.lock()?;
         let mut statement = connection.prepare(
             "INSERT INTO objects (id, class, label, serialized_attributes) VALUES (?1, ?2, ?3, ?4)",
         )?;
-        let object_model = ObjectModel::from(object);
+        let object_model = try_object_model_from_cryptoki_object(object)?;
 
         statement.execute((
             object_model.id.as_bytes(),
@@ -94,7 +97,7 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         &self,
         object_id: Uuid,
     ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
-        let connection = self.connection.lock().unwrap();
+        let connection = self.connection.lock()?;
         let mut statement = connection.prepare(
             "DELETE FROM objects WHERE id = ?1 RETURNING id, class, label, serialized_attributes;",
         )?;
@@ -103,11 +106,12 @@ impl CryptokiRepo for SqliteCryptokiRepo {
 
         Ok(Some(object_model.into()))
     }
+
     fn get_object(
         &self,
         object_id: Uuid,
     ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
-        let connection = self.connection.lock().unwrap();
+        let connection = self.connection.lock()?;
         let mut statement = connection.prepare("SELECT * FROM objects WHERE id = ?1;")?;
 
         let object_model = statement.query_row((object_id.as_bytes(),), ObjectModel::from_row)?;
@@ -115,6 +119,13 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         Ok(Some(object_model.into()))
     }
 
+    /// Fetches objects conforming to the given search template.
+    /// First, it filters objects in the database by label and class. Then,
+    /// it filters objects in memory using deserialized attributes
+    ///
+    /// # Arguments
+    ///
+    /// * `object_search` - The search template to be used for filtering objects
     fn get_objects(
         &self,
         object_search: &ObjectSearch,
@@ -130,41 +141,5 @@ impl CryptokiRepo for SqliteCryptokiRepo {
             .into_iter()
             .filter(|object| object.does_template_match(object_search.get_template()))
             .collect())
-    }
-
-    // TODO: consider get_object_ids
-}
-
-fn to_fixed_size_array<T, const N: usize>(v: Vec<T>) -> [T; N] {
-    v.try_into().unwrap_or_else(|vector: Vec<T>| {
-        panic!(
-            "Invalid vector length: expected {}, but got {}",
-            N,
-            vector.len()
-        )
-    })
-}
-impl From<&Arc<dyn CryptokiObject>> for ObjectClass {
-    fn from(value: &Arc<dyn CryptokiObject>) -> Self {
-        let class = CK_ATTRIBUTE_TYPE::from_le_bytes(to_fixed_size_array(
-            value.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap(),
-        ));
-        match class as u32 {
-            CKO_PRIVATE_KEY => ObjectClass::PrivateKey,
-            CKO_PUBLIC_KEY => ObjectClass::PublicKey,
-            CKO_SECRET_KEY => ObjectClass::SecretKey,
-            CKO_DATA => ObjectClass::Data,
-            _ => panic!("Invalid object class"),
-        }
-    }
-}
-
-pub(crate) fn from_i32(value: i32) -> Option<ObjectClass> {
-    match value {
-        1 => Some(ObjectClass::Data),
-        2 => Some(ObjectClass::SecretKey),
-        3 => Some(ObjectClass::PrivateKey),
-        4 => Some(ObjectClass::PublicKey),
-        _ => None,
     }
 }

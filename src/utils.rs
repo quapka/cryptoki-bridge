@@ -36,6 +36,17 @@ impl ToAttributeValue for &str {
     }
 }
 
+// TODO: don't panic
+pub(crate) fn to_fixed_size_array<T, const N: usize>(v: Vec<T>) -> [T; N] {
+    v.try_into().unwrap_or_else(|vector: Vec<T>| {
+        panic!(
+            "Invalid vector length: expected {}, but got {}",
+            N,
+            vector.len()
+        )
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

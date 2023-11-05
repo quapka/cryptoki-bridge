@@ -133,7 +133,7 @@ impl StateAccessor {
 
         let runtime = Runtime::new().unwrap();
 
-        let cryptoki_repo = Arc::new(SqliteCryptokiRepo::new(get_cryptoki_path()));
+        let cryptoki_repo = Arc::new(SqliteCryptokiRepo::new(get_cryptoki_path())?);
         cryptoki_repo
             .create_tables()
             .expect("Couldn't crate tables");

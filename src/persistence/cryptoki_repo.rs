@@ -6,6 +6,7 @@ use crate::state::object::{cryptoki_object::CryptokiObject, object_search::Objec
 
 use super::persistence_error::PersistenceError;
 
+/// Repository for storing and retrieving Cryptoki objects into and from a persistent storage
 pub(crate) trait CryptokiRepo: Send + Sync {
     fn store_object(&self, object: Arc<dyn CryptokiObject>) -> Result<Uuid, PersistenceError>;
     fn destroy_object(
