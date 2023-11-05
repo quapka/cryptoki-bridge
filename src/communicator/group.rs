@@ -6,6 +6,7 @@ use super::GroupId;
 ///
 /// * `group_id` - Group ID, which is also its public key
 /// * `name` - Name of the group
+#[derive(Clone)]
 pub(crate) struct Group {
     group_id: GroupId,
     name: String,

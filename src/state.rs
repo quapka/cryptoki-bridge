@@ -206,6 +206,30 @@ impl StateAccessor {
             .as_mut()
             .ok_or(CryptokiError::CryptokiNotInitialized)?;
         let groups = runtime.block_on(async move { communicator.get_groups().await })?;
+        self.filter_groups_based_on_configuration(groups)
+    }
+
+    fn filter_groups_based_on_configuration(
+        &self,
+        groups: Vec<Group>,
+    ) -> Result<Vec<Group>, CryptokiError> {
+        let configuration = CONFIGURATION.read()?;
+        let configuration = configuration
+            .as_ref()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_interface_configuration()?;
+
+        if let Some(configured_group_id) = configuration.get_group_id() {
+            let selected_group = groups
+                .iter()
+                .find(|group| group.get_group_id() == configured_group_id)
+                .ok_or_else(|| {
+                    eprintln!("The specified group is not present!");
+                    CryptokiError::FunctionFailed
+                })?;
+            return Ok(vec![selected_group.clone()]);
+        }
+
         Ok(groups)
     }
 
