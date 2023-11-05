@@ -63,7 +63,7 @@ pub fn C_Finalize(pReserved: CK_VOID_PTR) -> CK_RV {
 ///
 /// * `pInfo` - points to the location that receives the information
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
+pub unsafe fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -92,7 +92,7 @@ pub fn C_GetInfo(pInfo: CK_INFO_PTR) -> CK_RV {
 ///
 /// * `ppFunctionList` - points to a value which will receive a pointer to the library’s CK_FUNCTION_LIST structure
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
+pub unsafe fn C_GetFunctionList(ppFunctionList: CK_FUNCTION_LIST_PTR_PTR) -> CK_RV {
     if ppFunctionList.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -195,7 +195,7 @@ mod test {
     #[test]
     fn c_get_function_list_returns_ckr_ok() {
         let mut funct_list_ptr: CK_FUNCTION_LIST_PTR = 0 as CK_FUNCTION_LIST_PTR;
-        let return_value = C_GetFunctionList(&mut funct_list_ptr);
+        let return_value = unsafe { C_GetFunctionList(&mut funct_list_ptr) };
         assert_eq!(
             return_value, CKR_OK as CK_RV,
             "C_GetFunctionList didn't return CKR_OK",
@@ -209,7 +209,7 @@ mod test {
 
     #[test]
     fn given_nullptr_c_get_function_list_returns_ckr_arguments_bad() {
-        let return_value = C_GetFunctionList(0 as CK_FUNCTION_LIST_PTR_PTR);
+        let return_value = unsafe { C_GetFunctionList(0 as CK_FUNCTION_LIST_PTR_PTR) };
         assert_eq!(
             return_value, CKR_ARGUMENTS_BAD as CK_RV,
             "C_GetFunctionList didn't return CKR_ARGUMENTS_BAD",

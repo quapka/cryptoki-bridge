@@ -21,12 +21,12 @@ use super::{
 /// `pMechanism` - points to the decryption mechanism
 /// `hKey` - the handle of the decryption key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_DecryptInit(
+pub unsafe fn C_DecryptInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
 ) -> CK_RV {
-    C_EncryptInit(hSession, pMechanism, hKey)
+    unsafe { C_EncryptInit(hSession, pMechanism, hKey) }
 }
 
 /// Decrypts encrypted data in a single part
@@ -39,7 +39,7 @@ pub fn C_DecryptInit(
 /// * `pData` - points to the location that receives the recovered data
 /// * `pulDataLen` - points to the location that holds the length of the recovered data
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Decrypt(
+pub unsafe fn C_Decrypt(
     hSession: CK_SESSION_HANDLE,
     pEncryptedData: CK_BYTE_PTR,
     ulEncryptedDataLen: CK_ULONG,

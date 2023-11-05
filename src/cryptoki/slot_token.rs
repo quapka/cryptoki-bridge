@@ -22,7 +22,7 @@ use super::bindings::{
 /// * `pSlotList` - points to the buffer for the slot list
 /// * `pulCount` -  points to the location that receives the number of slots
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetSlotList(
+pub unsafe fn C_GetSlotList(
     _tokenPresent: CK_BBOOL,
     pSlotList: CK_SLOT_ID_PTR,
     pulCount: CK_ULONG_PTR,
@@ -71,7 +71,7 @@ pub fn C_GetSlotList(
 /// * `slotID` - the ID of the token’s slot
 /// * `pInfo` - points to the location that receives the token information
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
+pub unsafe fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -93,7 +93,7 @@ pub fn C_GetTokenInfo(slotID: CK_SLOT_ID, pInfo: CK_TOKEN_INFO_PTR) -> CK_RV {
 /// * `slotID` - the ID of the slot
 /// * `pInfo` - points to the location that receives the slot information
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
+pub unsafe fn C_GetSlotInfo(slotID: CK_SLOT_ID, pInfo: CK_SLOT_INFO_PTR) -> CK_RV {
     if pInfo.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }

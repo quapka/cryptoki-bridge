@@ -18,7 +18,7 @@ use openssl::hash::{Hasher, MessageDigest};
 /// * `hSession` - the session’s handle
 /// * `pMechanism` - points to the digesting mechanism
 #[cryptoki_macros::cryptoki_function]
-pub fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM_PTR) -> CK_RV {
+pub unsafe fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM_PTR) -> CK_RV {
     if pMechanism.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
     }
@@ -54,7 +54,7 @@ pub fn C_DigestInit(hSession: CK_SESSION_HANDLE, pMechanism: CK_MECHANISM_PTR) -
 /// * `pDigest` - points to the location that receives the message digest
 /// * `pulDigestLen` - points to the location that holds the length of the message digest
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Digest(
+pub unsafe fn C_Digest(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,
@@ -115,16 +115,15 @@ mod test {
     fn given_valid_data_c_digest_produces_valid_hash() -> Result<(), ErrorStack> {
         assert_eq!(CKR_OK as CK_RV, C_Initialize(NULL_PTR as CK_VOID_PTR));
         let mut session_handle = 0;
-        assert_eq!(
-            CKR_OK as CK_RV,
+        assert_eq!(CKR_OK as CK_RV, unsafe {
             C_OpenSession(
                 0,
                 0,
                 NULL_PTR as CK_VOID_PTR,
                 None,
-                &mut session_handle as CK_SESSION_HANDLE_PTR
+                &mut session_handle as CK_SESSION_HANDLE_PTR,
             )
-        );
+        });
         let mut digest_mechanism = CK_MECHANISM {
             mechanism: CKM_SHA256 as CK_MECHANISM_TYPE,
             pParameter: NULL_PTR as CK_VOID_PTR,
@@ -132,7 +131,7 @@ mod test {
         };
 
         assert_eq!(
-            C_DigestInit(session_handle, &mut digest_mechanism as CK_MECHANISM_PTR),
+            unsafe { C_DigestInit(session_handle, &mut digest_mechanism as CK_MECHANISM_PTR) },
             CKR_OK as CK_RV
         );
 
@@ -140,13 +139,15 @@ mod test {
         let mut digest: Vec<u8> = vec![0; MessageDigest::sha256().size() + 1];
         let mut digest_len: CK_ULONG = 0;
         assert_eq!(
-            C_Digest(
-                session_handle,
-                data.as_mut_ptr() as CK_BYTE_PTR,
-                data.len() as CK_ULONG,
-                digest.as_mut_ptr() as CK_BYTE_PTR,
-                &mut digest_len as CK_ULONG_PTR
-            ),
+            unsafe {
+                C_Digest(
+                    session_handle,
+                    data.as_mut_ptr() as CK_BYTE_PTR,
+                    data.len() as CK_ULONG,
+                    digest.as_mut_ptr() as CK_BYTE_PTR,
+                    &mut digest_len as CK_ULONG_PTR,
+                )
+            },
             CKR_OK as CK_RV
         );
         let digest: Vec<u8> = digest.iter().cloned().take(digest_len as usize).collect();

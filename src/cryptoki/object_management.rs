@@ -26,7 +26,7 @@ use super::{
 /// * `ulCount` - the number of attributes in the template
 /// * `phObject` - points to the location that receives the new object’s handle
 #[cryptoki_macros::cryptoki_function]
-pub fn C_CreateObject(
+pub unsafe fn C_CreateObject(
     hSession: CK_SESSION_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
     ulCount: CK_ULONG,
@@ -77,7 +77,7 @@ pub fn C_DestroyObject(hSession: CK_SESSION_HANDLE, hObject: CK_OBJECT_HANDLE) -
 /// * `pTemplate` - points to a template that specifies which attribute values are to be obtained, and receives the attribute values
 /// * `ulCount` - the number of attributes in the template
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GetAttributeValue(
+pub unsafe fn C_GetAttributeValue(
     hSession: CK_SESSION_HANDLE,
     hObject: CK_OBJECT_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
@@ -132,7 +132,7 @@ pub fn C_GetAttributeValue(
 /// * `ulCount` - the number of attributes in the search template. If 0, find all objects
 ///
 #[cryptoki_macros::cryptoki_function]
-pub fn C_FindObjectsInit(
+pub unsafe fn C_FindObjectsInit(
     hSession: CK_SESSION_HANDLE,
     pTemplate: CK_ATTRIBUTE_PTR,
     ulCount: CK_ULONG,
@@ -160,7 +160,7 @@ pub fn C_FindObjectsInit(
 /// * `ulMaxObjectCount` - the maximum number of object handles to be returned
 /// * `pulObjectCount` - points to the location that receives the actual number of object handles returned
 #[cryptoki_macros::cryptoki_function]
-pub fn C_FindObjects(
+pub unsafe fn C_FindObjects(
     hSession: CK_SESSION_HANDLE,
     phObject: CK_OBJECT_HANDLE_PTR,
     ulMaxObjectCount: CK_ULONG,

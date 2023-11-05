@@ -15,7 +15,7 @@ use super::bindings::{
 /// * `Notify` - the address of the notification callback function
 /// * `phSession` - points to the location that receives the handle for the new session
 #[cryptoki_macros::cryptoki_function]
-pub fn C_OpenSession(
+pub unsafe fn C_OpenSession(
     slotID: CK_SLOT_ID,
     flags: CK_FLAGS,
     pApplication: CK_VOID_PTR,

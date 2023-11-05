@@ -21,7 +21,7 @@ use super::{
 /// * `pMechanism` - points to the signature mechanism
 /// * `hKey` - handle of the signature key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_SignInit(
+pub unsafe fn C_SignInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -64,7 +64,7 @@ pub fn C_SignInit(
 /// * `pSignature` - points to the location that receives the signature
 /// * `pulSignatureLen` - points to the location that holds the length of the signature
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Sign(
+pub unsafe fn C_Sign(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,

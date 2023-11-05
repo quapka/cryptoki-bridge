@@ -24,7 +24,7 @@ use super::{
 /// * `pMechanism` - points to the encryption mechanism
 /// * `hKey` - the handle of the encryption key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_EncryptInit(
+pub unsafe fn C_EncryptInit(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hKey: CK_OBJECT_HANDLE,
@@ -64,7 +64,7 @@ pub fn C_EncryptInit(
 /// * `pEncryptedData` - points to the location that receives the encrypted data
 /// * `pulEncryptedDataLen` - points to the location that holds the length in bytes of the encrypted data
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Encrypt(
+pub unsafe fn C_Encrypt(
     hSession: CK_SESSION_HANDLE,
     pData: CK_BYTE_PTR,
     ulDataLen: CK_ULONG,

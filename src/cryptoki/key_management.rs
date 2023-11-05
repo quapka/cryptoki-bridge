@@ -37,7 +37,7 @@ pub(crate) const AES_IV_SIZE: usize = AES_BLOCK_SIZE;
 /// * `ulCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the new key or set of domain parameters
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GenerateKey(
+pub unsafe fn C_GenerateKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     pTemplate: CK_ATTRIBUTE_PTR,
@@ -83,7 +83,7 @@ pub fn C_GenerateKey(
 /// * `phPublicKey` - points to the location that receives the handle of the new public key
 /// * `phPrivateKey` - points to the location that receives the handle of the new private key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_GenerateKeyPair(
+pub unsafe fn C_GenerateKeyPair(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     _pPublicKeyTemplate: CK_ATTRIBUTE_PTR,
@@ -123,7 +123,7 @@ pub fn C_GenerateKeyPair(
 /// * `pWrappedKey` - points to the location that receives the wrapped key
 /// * `pulWrappedKeyLen` - points to the location that receives the length of the wrapped key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_WrapKey(
+pub unsafe fn C_WrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hWrappingKey: CK_OBJECT_HANDLE,
@@ -193,7 +193,7 @@ pub fn C_WrapKey(
 /// * `ulAttributeCount` - the number of attributes in the template
 /// * `phKey` - points to the location that receives the handle of the recovered key
 #[cryptoki_macros::cryptoki_function]
-pub fn C_UnwrapKey(
+pub unsafe fn C_UnwrapKey(
     hSession: CK_SESSION_HANDLE,
     pMechanism: CK_MECHANISM_PTR,
     hUnwrappingKey: CK_OBJECT_HANDLE,
