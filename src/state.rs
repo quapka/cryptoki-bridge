@@ -8,6 +8,7 @@ use crate::{
         group::Group, meesign::Meesign, AuthResponse, Communicator, GroupId, RequestData, TaskId,
     },
     configuration_provider::{
+        configuration_provider_error::ConfigurationProviderError,
         controller_configuration::ControllerConfiguration, env_configuration::EnvConfiguration,
         ConfigurationProvider,
     },
@@ -213,10 +214,20 @@ impl StateAccessor {
         groups: Vec<Group>,
     ) -> Result<Vec<Group>, CryptokiError> {
         let configuration = CONFIGURATION.read()?;
-        let configuration = configuration
+        let configuration = match configuration
             .as_ref()
             .ok_or(CryptokiError::CryptokiNotInitialized)?
-            .get_interface_configuration()?;
+            .get_interface_configuration()
+        {
+            Ok(conf) => conf,
+            Err(ConfigurationProviderError::ReqwestError(_)) => {
+                // TODO:
+                // a temporary hot fix before we properly refactor the solution
+                // and allow for mocked communicator without the need to mock the configuration
+                return Ok(groups);
+            }
+            Err(err) => return Err(err.into()),
+        };
 
         if let Some(configured_group_id) = configuration.get_group_id() {
             let selected_group = groups
