@@ -4,9 +4,8 @@ use std::{
 };
 
 use crate::{
-    communicator::group::Group,
-    cryptoki_error::CryptokiError,
-    state::{token::MeesignToken, StateAccessor},
+    communicator::group::Group, cryptoki_error::CryptokiError, state::token::MeesignToken,
+    state::StateAccessor,
 };
 
 use super::bindings::{
