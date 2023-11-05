@@ -16,7 +16,7 @@ pub(crate) fn encrypt_pad(key: &[u8], plaintext: Vec<u8>) -> EncryptionOutput {
     let plaintext_length = plaintext.len();
     plaintext_buffer[..plaintext_length].copy_from_slice(&plaintext);
 
-    let ciphertext = Aes128CbcEnc::new(&key.into(), &iv.into())
+    let ciphertext = Aes128CbcEnc::new(&key, &iv.into())
         .encrypt_padded_mut::<Pkcs7>(&mut plaintext_buffer, plaintext_length)
         .unwrap()
         .to_vec();
@@ -31,7 +31,7 @@ pub(crate) fn decrypt(key: &[u8], mut ciphertext: Vec<u8>, iv: Vec<u8>) -> Vec<u
     let key = GenericArray::from_slice(key).to_owned();
     let iv: [u8; AES_BLOCK_SIZE] = iv[..AES_BLOCK_SIZE].try_into().unwrap();
 
-    let plaintext: Vec<u8> = Aes128CbcDec::new(&key.into(), &iv.into())
+    let plaintext: Vec<u8> = Aes128CbcDec::new(&key, &iv.into())
         .decrypt_padded_mut::<Pkcs7>(&mut ciphertext)
         .unwrap()
         .to_vec();

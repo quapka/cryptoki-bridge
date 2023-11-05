@@ -30,7 +30,7 @@ impl Meesign {
         port: u32,
         certificate: Certificate,
     ) -> Result<Self, CommunicatorError> {
-        let server_uri = Uri::from_str(&format!("https://{}:{}", &hostname, port.to_string()))?;
+        let server_uri = Uri::from_str(&format!("https://{}:{}", &hostname, port))?;
         let client_tls_config = ClientTlsConfig::new()
             .domain_name(hostname)
             .ca_certificate(certificate);
@@ -52,7 +52,7 @@ impl Communicator for Meesign {
         let groups = groups
             .iter()
             .filter(|group| group.key_type == KeyType::SignChallenge as i32)
-            .map(|group| Group::new(group.identifier.clone().into(), group.name.clone().into()))
+            .map(|group| Group::new(group.identifier.clone(), group.name.clone()))
             .collect();
         Ok(groups)
     }
@@ -89,12 +89,12 @@ impl Communicator for Meesign {
                 return Ok(response.get_ref().data.to_owned());
             }
             if response.get_ref().state == TaskState::Failed as i32 {
-                return Err(CommunicatorError::TaskFailedError);
+                return Err(CommunicatorError::TaskFailed);
             }
             time::sleep(Duration::from_secs(ATTEMPT_SLEEP_SEC)).await;
         }
 
-        Err(CommunicatorError::TaskTimedOutError(
+        Err(CommunicatorError::TaskTimedOut(
             (MAX_ATTEMPT_COUNT as u64) * ATTEMPT_SLEEP_SEC,
         ))
     }

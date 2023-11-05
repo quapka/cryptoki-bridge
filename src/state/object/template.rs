@@ -26,7 +26,7 @@ impl Template {
         let Some(Some(value)) = self.attributes.get(key) else {
             return None;
         };
-        let Some(&value) = value.get(0) else {
+        let Some(&value) = value.first() else {
             return None;
         };
         Some(value as CK_BBOOL)

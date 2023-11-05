@@ -65,11 +65,7 @@ pub unsafe fn C_Decrypt(
         encryptor.decrypt_block(&mut block);
         if !pData.is_null() {
             unsafe {
-                ptr::copy(
-                    block.as_ptr(),
-                    pData.offset((block_i * 16) as isize),
-                    block.len(),
-                );
+                ptr::copy(block.as_ptr(), pData.add(block_i * 16), block.len());
             }
         }
         cipher_length += block.len();

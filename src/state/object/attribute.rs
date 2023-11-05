@@ -1,5 +1,3 @@
-use std::ptr;
-
 use crate::{
     cryptoki::{
         bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE},

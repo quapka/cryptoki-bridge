@@ -24,7 +24,7 @@ impl TaskNameProvider {
         let task_parts = vec![request_info, binary_info, originator_info];
         let task_parts_joined = task_parts
             .into_iter()
-            .filter_map(|part| part)
+            .flatten()
             .collect::<Vec<String>>()
             .join(" ");
         let task_name = format!("{task_parts_joined}.");

@@ -42,14 +42,14 @@ impl Sessions {
     }
 
     pub(crate) fn get_session(&self, session_handle: &CK_SESSION_HANDLE) -> Option<&Session> {
-        self.sessions.get(session_handle).and_then(|x| Some(x))
+        self.sessions.get(session_handle)
     }
 
     pub(crate) fn get_session_mut(
         &mut self,
         session_handle: &CK_SESSION_HANDLE,
     ) -> Option<&mut Session> {
-        self.sessions.get_mut(session_handle).and_then(|x| Some(x))
+        self.sessions.get_mut(session_handle)
     }
 
     pub(crate) fn close_sessions(&mut self) {

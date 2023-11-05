@@ -45,8 +45,7 @@ fn get_cryptoki_path() -> PathBuf {
     };
 
     static CRYPTOKI_DIRECTORY_NAME: &str = ".cryptoki-bridge";
-    let cryptoki_directory_path = home_directory.join(CRYPTOKI_DIRECTORY_NAME);
-    cryptoki_directory_path
+    home_directory.join(CRYPTOKI_DIRECTORY_NAME)
 }
 
 pub(crate) struct StateAccessor {}
@@ -252,11 +251,10 @@ impl StateAccessor {
             let task_id = communicator
                 .send_auth_request(group_id, data, request_originator)
                 .await?;
-            let response = communicator.get_auth_response(task_id).await;
-            response
+            communicator.get_auth_response(task_id).await
         })?;
 
-        Ok(response.ok_or(CryptokiError::FunctionFailed)?)
+        response.ok_or(CryptokiError::FunctionFailed)
     }
 
     pub(crate) fn store_signing_response(

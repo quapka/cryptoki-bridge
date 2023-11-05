@@ -90,7 +90,7 @@ pub unsafe fn C_Encrypt(
             unsafe {
                 ptr::copy(
                     block.as_ptr(),
-                    pEncryptedData.offset((block_i * 16) as isize),
+                    pEncryptedData.add(block_i * 16),
                     block.len(),
                 );
             }

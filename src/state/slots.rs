@@ -35,17 +35,15 @@ impl Slots {
     }
 
     pub(crate) fn get_token_info(&self, slot_id: &CK_SLOT_ID) -> Option<CK_TOKEN_INFO> {
-        match self.tokens.get(slot_id) {
-            Some(token) => Some(token.read().unwrap().get_token_info()),
-            None => None,
-        }
+        self.tokens
+            .get(slot_id)
+            .map(|token| token.read().unwrap().get_token_info())
     }
 
     pub(crate) fn get_slot_info(&self, slot_id: &CK_SLOT_ID) -> Option<CK_SLOT_INFO> {
-        match self.tokens.get(slot_id) {
-            Some(token) => Some(token.read().unwrap().get_slot_info()),
-            None => None,
-        }
+        self.tokens
+            .get(slot_id)
+            .map(|token| token.read().unwrap().get_slot_info())
     }
 
     pub(crate) fn get_token(&self, slot_id: &CK_SLOT_ID) -> Option<TokenStore> {

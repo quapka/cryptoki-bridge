@@ -190,10 +190,7 @@ impl Session {
         &mut self,
         object_handle: &CK_OBJECT_HANDLE,
     ) -> Result<Option<Arc<dyn CryptokiObject>>, PersistenceError> {
-        let Some(object_id) = self
-            .handle_resolver
-            .destroy_object_mapping(object_handle.clone())
-        else {
+        let Some(object_id) = self.handle_resolver.destroy_object_mapping(*object_handle) else {
             return Ok(None);
         };
         let destroyed_object = self.ephemeral_objects.remove(&object_id);
@@ -214,7 +211,7 @@ impl Session {
         if object.is_some() {
             return Ok(object.cloned());
         }
-        self.cryptoki_repo.get_object(object_id.clone())
+        self.cryptoki_repo.get_object(object_id)
     }
 
     pub(crate) fn get_token(&self) -> TokenStore {
@@ -243,7 +240,7 @@ impl Session {
                     .iter()
                     .map(|object| {
                         self.handle_resolver
-                            .get_or_insert_object_handle(object.get_id().clone())
+                            .get_or_insert_object_handle(*object.get_id())
                     })
                     .collect::<Vec<CK_OBJECT_HANDLE>>()
                     .into_iter()

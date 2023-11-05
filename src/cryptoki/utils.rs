@@ -26,7 +26,7 @@ mod test {
 
     #[test]
     fn given_valid_pointer_to_array_from_pointer_returns_vector() {
-        let attribute_value = vec![1, 2, 3];
+        let attribute_value = [1, 2, 3];
         let attribute_1 = CK_ATTRIBUTE {
             type_: CKA_LABEL as CK_ATTRIBUTE_TYPE,
             pValue: attribute_value.as_ptr() as CK_VOID_PTR,

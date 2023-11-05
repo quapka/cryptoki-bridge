@@ -4,9 +4,7 @@ use thiserror::Error;
 
 use crate::{
     communicator::communicator_error::CommunicatorError,
-    configuration_provider::{
-        configuration_provider_error::ConfigurationProviderError, ConfigurationProvider,
-    },
+    configuration_provider::configuration_provider_error::ConfigurationProviderError,
     cryptoki::bindings::{
         CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
         CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID,
@@ -70,12 +68,12 @@ impl From<CommunicatorError> for CryptokiError {
         match value {
             #[cfg(feature = "mocked_communicator")]
             CommunicatorError::CryptographicError(_) => Self::FunctionFailed,
-            CommunicatorError::TransportError(_) => Self::TransportError,
-            CommunicatorError::InvalidConfigurationError(_) => Self::FunctionFailed,
-            CommunicatorError::TaskFailedError => Self::FunctionFailed,
-            CommunicatorError::TaskTimedOutError(_) => Self::FunctionFailed,
-            CommunicatorError::InvalidStatusError(_) => Self::TransportError,
-            CommunicatorError::IoError(_) => Self::DeviceError,
+            CommunicatorError::Transport(_) => Self::TransportError,
+            CommunicatorError::InvalidConfiguration(_) => Self::FunctionFailed,
+            CommunicatorError::TaskFailed => Self::FunctionFailed,
+            CommunicatorError::TaskTimedOut(_) => Self::FunctionFailed,
+            CommunicatorError::InvalidStatus(_) => Self::TransportError,
+            CommunicatorError::Io(_) => Self::DeviceError,
         }
     }
 }

@@ -102,7 +102,7 @@ fn set_package_info() -> Result<(), Box<dyn Error>> {
 
     let out_dir = env::var("OUT_DIR")?;
     let package_info_filepath = format!("{}/package_info.rs", out_dir);
-    let mut file = File::create(&package_info_filepath)?;
+    let mut file = File::create(package_info_filepath)?;
     file.write_all(major_version.as_bytes())?;
     file.write_all(minor_version.as_bytes())?;
     Ok(())

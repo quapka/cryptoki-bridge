@@ -68,7 +68,7 @@ impl SqliteCryptokiRepo {
             },
         )?;
         rows.into_iter()
-            .map(|x| x.map_err(|err| PersistenceError::from(err)))
+            .map(|x| x.map_err(PersistenceError::from))
             .collect()
     }
 }
@@ -99,8 +99,7 @@ impl CryptokiRepo for SqliteCryptokiRepo {
             "DELETE FROM objects WHERE id = ?1 RETURNING id, class, label, serialized_attributes;",
         )?;
 
-        let object_model =
-            statement.query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))?;
+        let object_model = statement.query_row((object_id.as_bytes(),), ObjectModel::from_row)?;
 
         Ok(Some(object_model.into()))
     }
@@ -111,8 +110,7 @@ impl CryptokiRepo for SqliteCryptokiRepo {
         let connection = self.connection.lock().unwrap();
         let mut statement = connection.prepare("SELECT * FROM objects WHERE id = ?1;")?;
 
-        let object_model =
-            statement.query_row((object_id.as_bytes(),), |row| ObjectModel::from_row(row))?;
+        let object_model = statement.query_row((object_id.as_bytes(),), ObjectModel::from_row)?;
 
         Ok(Some(object_model.into()))
     }
