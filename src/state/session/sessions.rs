@@ -7,7 +7,7 @@ use crate::{
     state::slots::TokenStore,
 };
 
-use super::session::Session;
+use super::single_session::Session;
 
 pub(crate) struct Sessions {
     sessions: HashMap<CK_SESSION_HANDLE, Session>,

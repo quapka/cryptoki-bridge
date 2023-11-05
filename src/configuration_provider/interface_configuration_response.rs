@@ -10,18 +10,6 @@ pub(crate) struct InterfaceConfigurationResponse {
 }
 
 impl InterfaceConfigurationResponse {
-    pub fn new(
-        communicator_hostname: String,
-        group_id: GroupId,
-        communicator_certificate_path: String,
-    ) -> Self {
-        Self {
-            communicator_hostname,
-            group_id,
-            communicator_certificate_path,
-        }
-    }
-
     pub fn get_communicator_hostname(&self) -> &str {
         &self.communicator_hostname
     }

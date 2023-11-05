@@ -6,7 +6,7 @@ use crate::{
     communicator::communicator_error::CommunicatorError,
     configuration_provider::configuration_provider_error::ConfigurationProviderError,
     cryptoki::bindings::{
-        CKR_ARGUMENTS_BAD, CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
+        CKR_CRYPTOKI_NOT_INITIALIZED, CKR_DEVICE_ERROR, CKR_FUNCTION_FAILED,
         CKR_FUNCTION_NOT_SUPPORTED, CKR_GENERAL_ERROR, CKR_OBJECT_HANDLE_INVALID,
         CKR_OPERATION_NOT_INITIALIZED, CKR_SESSION_HANDLE_INVALID, CKR_SLOT_ID_INVALID, CK_RV,
     },
@@ -21,8 +21,6 @@ pub(crate) enum CryptokiError {
     CryptokiNotInitialized,
     #[error("Session handle is invalid")]
     SessionHandleInvalid,
-    #[error("Invalid argument was supplied")]
-    InvalidArgument,
     #[error("Function is not supported")]
     FunctionNotSupported,
     #[error("Operation is not initialized")]
@@ -45,7 +43,6 @@ impl CryptokiError {
             Self::SynchronizationElementPoisoned => CKR_GENERAL_ERROR as CK_RV,
             Self::CryptokiNotInitialized => CKR_CRYPTOKI_NOT_INITIALIZED as CK_RV,
             Self::SessionHandleInvalid => CKR_SESSION_HANDLE_INVALID as CK_RV,
-            Self::InvalidArgument => CKR_ARGUMENTS_BAD as CK_RV,
             Self::FunctionNotSupported => CKR_FUNCTION_NOT_SUPPORTED as CK_RV,
             Self::OperationNotInitialized => CKR_OPERATION_NOT_INITIALIZED as CK_RV,
             Self::ObjectHandleInvalid => CKR_OBJECT_HANDLE_INVALID as CK_RV,

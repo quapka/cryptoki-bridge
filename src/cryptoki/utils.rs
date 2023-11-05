@@ -1,5 +1,10 @@
 use std::ptr;
 
+/// Allows easier vector initialization from a pointer.
+///
+/// # Safety
+///
+/// The pointer must be valid and point to an array of T with the given count.
 pub unsafe trait FromPointer<T> {
     /// Creates a vector from a pointer to an array of T, copying memory from the pointer.
     unsafe fn from_pointer(pointer: *mut T, count: usize) -> Self;

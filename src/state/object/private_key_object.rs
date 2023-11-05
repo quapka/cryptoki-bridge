@@ -1,9 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    cryptoki::bindings::{
-        CKA_CLASS, CKA_ID, CKA_SIGN, CKA_VALUE, CKO_PRIVATE_KEY, CK_ATTRIBUTE_TYPE, CK_TRUE,
-    },
+    cryptoki::bindings::{CKA_VALUE, CKO_PRIVATE_KEY, CK_ATTRIBUTE_TYPE},
     state::object::cryptoki_object::AttributeValidator,
 };
 
@@ -18,27 +16,6 @@ pub(crate) struct PrivateKeyObject {
     attributes: Attributes,
 }
 
-impl PrivateKeyObject {
-    pub(crate) fn new() -> Self {
-        let mut attributes = Attributes::new();
-        attributes.insert(CKA_ID as CK_ATTRIBUTE_TYPE, None);
-        attributes.insert(
-            CKA_SIGN as CK_ATTRIBUTE_TYPE,
-            Some((CK_TRUE as u8).to_le_bytes().to_vec()),
-        );
-        let mut object = Self {
-            id: Uuid::new_v4(),
-            attributes,
-        };
-        object.set_attribute(
-            CKA_CLASS as CK_ATTRIBUTE_TYPE,
-            (CKO_PRIVATE_KEY as CK_ATTRIBUTE_TYPE)
-                .to_le_bytes()
-                .to_vec(),
-        );
-        object
-    }
-}
 impl CryptokiObject for PrivateKeyObject {
     fn from_parts(id: Uuid, attributes: Attributes) -> Self
     where

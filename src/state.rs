@@ -31,7 +31,7 @@ use slots::{Slots, TokenStore};
 
 use self::{
     object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch},
-    session::session::Signer,
+    session::single_session::Signer,
 };
 
 fn ensure_file_structure() -> Result<(), CryptokiError> {

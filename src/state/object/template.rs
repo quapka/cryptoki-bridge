@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::cryptoki::bindings::{CKA_CLASS, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE, CK_BBOOL};
+use crate::cryptoki::bindings::{CKA_CLASS, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE};
 
 use super::{attribute::Attribute, cryptoki_object::Attributes, object_class::ObjectClass};
 
@@ -20,16 +20,6 @@ impl Template {
         Self {
             attributes: attributes_map,
         }
-    }
-
-    pub(crate) fn get_bool(&self, key: &CK_ATTRIBUTE_TYPE) -> Option<CK_BBOOL> {
-        let Some(Some(value)) = self.attributes.get(key) else {
-            return None;
-        };
-        let Some(&value) = value.first() else {
-            return None;
-        };
-        Some(value as CK_BBOOL)
     }
 
     pub(crate) fn get_value(&self, key: &CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {

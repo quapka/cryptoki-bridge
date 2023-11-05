@@ -17,9 +17,9 @@ use super::bindings::{
 #[cryptoki_macros::cryptoki_function]
 pub unsafe fn C_OpenSession(
     slotID: CK_SLOT_ID,
-    flags: CK_FLAGS,
-    pApplication: CK_VOID_PTR,
-    Notify: CK_NOTIFY,
+    _flags: CK_FLAGS,
+    _pApplication: CK_VOID_PTR,
+    _Notify: CK_NOTIFY,
     phSession: CK_SESSION_HANDLE_PTR,
 ) -> CK_RV {
     // TODO: finish implementation
@@ -62,10 +62,10 @@ pub fn C_CloseSession(hSession: CK_SESSION_HANDLE) -> CK_RV {
 /// `ulPinLen` - the length of the PIN
 #[cryptoki_macros::cryptoki_function]
 pub fn C_Login(
-    hSession: CK_SESSION_HANDLE,
-    userType: CK_USER_TYPE,
-    pPin: CK_UTF8CHAR_PTR,
-    ulPinLen: CK_ULONG,
+    _hSession: CK_SESSION_HANDLE,
+    _userType: CK_USER_TYPE,
+    _pPin: CK_UTF8CHAR_PTR,
+    _ulPinLen: CK_ULONG,
 ) -> CK_RV {
     // TODO: do we need this kind of auth?
     // for now just allow all logins
@@ -78,8 +78,7 @@ pub fn C_Login(
 ///
 /// * `hSession` - the session’s handle
 #[cryptoki_macros::cryptoki_function]
-pub fn C_Logout(hSession: CK_SESSION_HANDLE) -> CK_RV {
+pub fn C_Logout(_hSession: CK_SESSION_HANDLE) -> CK_RV {
     // for now do nothing
-    // TODO
     CKR_OK as CK_RV
 }

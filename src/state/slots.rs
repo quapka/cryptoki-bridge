@@ -23,10 +23,6 @@ impl Slots {
         self.counter as CK_SLOT_ID
     }
 
-    pub(crate) fn get_slot_list(&self) -> Vec<CK_SLOT_ID> {
-        self.tokens.keys().cloned().collect()
-    }
-
     pub(crate) fn new() -> Self {
         Self {
             tokens: HashMap::new(),

@@ -75,10 +75,6 @@ impl Token for MeesignToken {
 }
 
 impl MeesignToken {
-    pub(crate) fn new(group_id: GroupId, name: String) -> Self {
-        Self { group_id, name }
-    }
-
     fn create_token_label(&self) -> [u8; LABEL_BUFFER_LENGTH] {
         let token_label = self.create_token_name(LABEL_BUFFER_LENGTH);
         match token_label.try_into() {

@@ -1,8 +1,6 @@
 use uuid::Uuid;
 
-use crate::cryptoki::bindings::{
-    CKA_CLASS, CKA_VALUE, CKO_SECRET_KEY, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE,
-};
+use crate::cryptoki::bindings::{CKA_VALUE, CKO_SECRET_KEY, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE};
 
 use super::{
     cryptoki_object::{
@@ -17,19 +15,6 @@ pub(crate) struct SecretKeyObject {
     attributes: Attributes,
 }
 
-impl SecretKeyObject {
-    pub(crate) fn new() -> Self {
-        let mut object = Self {
-            id: Uuid::new_v4(),
-            attributes: Attributes::new(),
-        };
-        object.set_attribute(
-            CKA_CLASS as CK_ATTRIBUTE_TYPE,
-            (CKO_SECRET_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec(),
-        );
-        object
-    }
-}
 impl CryptokiObject for SecretKeyObject {
     fn from_parts(id: Uuid, attributes: Attributes) -> Self
     where

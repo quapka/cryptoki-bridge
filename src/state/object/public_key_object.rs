@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    cryptoki::bindings::{CKA_CLASS, CKA_VALUE, CKO_PUBLIC_KEY, CK_ATTRIBUTE_TYPE},
+    cryptoki::bindings::{CKA_VALUE, CKO_PUBLIC_KEY, CK_ATTRIBUTE_TYPE},
     state::object::cryptoki_object::AttributeValidator,
 };
 
@@ -16,19 +16,6 @@ pub(crate) struct PublicKeyObject {
     attributes: Attributes,
 }
 
-impl PublicKeyObject {
-    pub(crate) fn new() -> Self {
-        let mut object = Self {
-            id: Uuid::new_v4(),
-            attributes: Attributes::new(),
-        };
-        object.set_attribute(
-            CKA_CLASS as CK_ATTRIBUTE_TYPE,
-            (CKO_PUBLIC_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec(),
-        );
-        object
-    }
-}
 impl CryptokiObject for PublicKeyObject {
     fn from_parts(id: Uuid, attributes: Attributes) -> Self
     where

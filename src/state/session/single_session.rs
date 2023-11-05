@@ -7,7 +7,7 @@ use rand::{rngs::OsRng, Rng};
 use uuid::Uuid;
 
 use crate::{
-    communicator::{AuthResponse, GroupId, TaskId},
+    communicator::{AuthResponse, GroupId},
     cryptoki::bindings::{
         CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_EC_PARAMS, CKA_EC_POINT, CKA_ID, CKA_KEY_TYPE,
         CKA_LABEL, CKA_VALUE, CKK_ECDSA, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY, CK_FALSE,
@@ -47,6 +47,9 @@ pub(crate) struct Session {
     // TODO: also store token ID
     // TODO: RwLock
     handle_resolver: HandleResolver,
+
+    // TODO: utilize token attribute
+    #[allow(dead_code)]
     token: TokenStore,
 
     encryptor: Option<Aes128>,
@@ -106,7 +109,6 @@ impl HandleResolver {
 pub(crate) struct Signer {
     pub key: Arc<dyn CryptokiObject>,
     pub response: Option<AuthResponse>,
-    pub task_id: Option<TaskId>,
     pub auth_request_originator: Option<String>,
 }
 impl Signer {
@@ -117,7 +119,6 @@ impl Signer {
         Self {
             key,
             response: None,
-            task_id: None,
             auth_request_originator,
         }
     }
@@ -152,14 +153,6 @@ impl Session {
 
     pub fn set_hasher(&mut self, hasher: Hasher) {
         self.hasher = Some(hasher)
-    }
-
-    pub fn set_object_search(&mut self, object_search: ObjectSearch) {
-        self.object_search = Some(object_search);
-    }
-
-    pub fn get_object_search(&self) -> Option<&ObjectSearch> {
-        self.object_search.as_ref()
     }
 
     pub fn init_object_search(&mut self, object_search: ObjectSearch) {
@@ -212,10 +205,6 @@ impl Session {
             return Ok(object.cloned());
         }
         self.cryptoki_repo.get_object(object_id)
-    }
-
-    pub(crate) fn get_token(&self) -> TokenStore {
-        self.token.clone()
     }
 
     pub fn get_filtered_handles(
@@ -278,26 +267,6 @@ impl Session {
         };
 
         signer.response = Some(response);
-    }
-
-    pub fn get_signing_response(&self) -> Option<AuthResponse> {
-        let Some(ref signer) = self.signer else {
-            return None;
-        };
-        signer.response.clone()
-    }
-
-    pub fn set_signer_task_id(&mut self, task_id: TaskId) {
-        let Some(ref mut signer) = self.signer else {
-            return;
-        };
-        signer.task_id = Some(task_id)
-    }
-    pub fn get_signing_task_id(&self) -> Option<TaskId> {
-        let Some(ref signer) = self.signer else {
-            return None;
-        };
-        signer.task_id.clone()
     }
 
     pub fn create_communicator_keypair(

@@ -9,9 +9,8 @@ use crate::state::StateAccessor;
 
 use super::{
     bindings::{
-        CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID, CKR_OK,
-        CK_BYTE_PTR, CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG,
-        CK_ULONG_PTR,
+        CKM_AES_ECB, CKR_ARGUMENTS_BAD, CKR_MECHANISM_INVALID, CKR_OK, CK_BYTE_PTR,
+        CK_MECHANISM_PTR, CK_OBJECT_HANDLE, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     utils::FromPointer,
 };
@@ -103,42 +102,4 @@ pub unsafe fn C_Encrypt(
     }
 
     CKR_OK as CK_RV
-}
-
-/// Continues a multiple-part encryption operation, processing another data part
-///
-/// # Arguments
-///
-/// * `hSession` - is the session’s handle
-/// * `pPart` - points to the data part
-/// * `ulPartLen` - the length of the data part
-/// * `pEncryptedPart` - points to the location that receives the encrypted data part
-/// * `pulEncryptedPartLen` - points to the location that holds the length in bytes of the encrypted data part
-#[cryptoki_macros::cryptoki_function]
-pub fn C_EncryptUpdate(
-    hSession: CK_SESSION_HANDLE,
-    pPart: CK_BYTE_PTR,
-    ulPartLen: CK_ULONG,
-    pEncryptedPart: CK_BYTE_PTR,
-    pulEncryptedPartLen: CK_ULONG_PTR,
-) -> CK_RV {
-    // TODO
-    CKR_FUNCTION_NOT_SUPPORTED as CK_RV
-}
-
-/// Finishes a multiple-part encryption operation
-///
-/// # Arguments
-///
-/// * `hSession` - the session’s handle
-/// * `pLastEncryptedPart` - points to the location that receives the last encrypted data part, if any
-/// * `pulLastEncryptedPartLen` - points to the location that holds the length of the last encrypted data part
-#[cryptoki_macros::cryptoki_function]
-pub fn C_EncryptFinal(
-    hSession: CK_SESSION_HANDLE,
-    pLastEncryptedPart: CK_BYTE_PTR,
-    pulLastEncryptedPartLen: CK_ULONG_PTR,
-) -> CK_RV {
-    // TODO
-    CKR_FUNCTION_NOT_SUPPORTED as CK_RV
 }

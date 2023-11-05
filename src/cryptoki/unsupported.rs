@@ -149,6 +149,20 @@ unsupported!(
     )
 );
 
+unsupported!(C_EncryptUpdate(
+    hSession: CK_SESSION_HANDLE,
+    pPart: CK_BYTE_PTR,
+    ulPartLen: CK_ULONG,
+    pEncryptedPart: CK_BYTE_PTR,
+    pulEncryptedPartLen: CK_ULONG_PTR,
+));
+
+unsupported!(C_EncryptFinal(
+    hSession: CK_SESSION_HANDLE,
+    pLastEncryptedPart: CK_BYTE_PTR,
+    pulLastEncryptedPartLen: CK_ULONG_PTR,
+));
+
 unsupported!(
     C_DecryptUpdate(
         hSession: CK_SESSION_HANDLE,
