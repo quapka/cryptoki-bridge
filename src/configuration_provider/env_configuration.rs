@@ -20,10 +20,12 @@ impl EnvConfiguration {
         env::var(COMMUNICATOR_HOSTNAME_ENV_NAME)
     }
 
-    fn get_group_id() -> Result<GroupId, ConfigurationProviderError> {
-        let group_id_string = env::var(GROUP_ID_ENV_NAME)?;
+    fn get_group_id() -> Result<Option<GroupId>, ConfigurationProviderError> {
+        let Ok(group_id_string) = env::var(GROUP_ID_ENV_NAME) else {
+            return Ok(None);
+        };
         let group_id: GroupId = hex::decode(group_id_string)?;
-        Ok(group_id)
+        Ok(Some(group_id))
     }
 
     fn get_communicator_certificate_path() -> Result<String, VarError> {
@@ -39,11 +41,7 @@ impl EnvConfiguration {
             (Ok(hostname), Ok(cert_path), Ok(group_id)) => {
                 InterfaceConfiguration::new(hostname, group_id, cert_path)
             }
-            (
-                Err(VarError::NotPresent),
-                Err(VarError::NotPresent),
-                Err(ConfigurationProviderError::ValueNotSet(VarError::NotPresent)),
-            ) => return Ok(None),
+            (Err(VarError::NotPresent), Err(VarError::NotPresent), Ok(None)) => return Ok(None),
             (hostname, id, path) => {
                 hostname?;
                 id?;

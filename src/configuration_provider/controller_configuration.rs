@@ -5,7 +5,8 @@ use crate::communicator::task_name_provider::get_binary_name;
 
 use super::{
     configuration_provider_error::ConfigurationProviderError,
-    interface_configuration::InterfaceConfiguration, ConfigurationProvider,
+    interface_configuration::InterfaceConfiguration,
+    interface_configuration_response::InterfaceConfigurationResponse, ConfigurationProvider,
 };
 
 static CONTROLLER_PORT: &str = "11115";
@@ -37,11 +38,11 @@ impl ConfigurationProvider for ControllerConfiguration {
             .as_ref()
             .map(|tool_name| format!("tool={}", tool_name))
             .unwrap_or_default();
-        let configuration: InterfaceConfiguration = reqwest::blocking::get(format!(
+        let configuration: InterfaceConfigurationResponse = reqwest::blocking::get(format!(
             "http://www.localhost:{CONTROLLER_PORT}/{effective_interface_type}/configuration?{tool_parameter}"
         ))?
         .json()?;
-        Ok(configuration)
+        Ok(configuration.into())
     }
 }
 
