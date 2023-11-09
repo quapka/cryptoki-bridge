@@ -437,6 +437,7 @@ impl StateAccessor {
     ) -> Result<Box<dyn Communicator>, CryptokiError> {
         let configuration = configuration.get_interface_configuration().map_err(|err|{
             eprintln!("Couldn't get interface configuration. Either launch bridge controller, or provide appropriate ENV varriables.");
+            eprintln!("In case bridge controller is running, make sure the interface is configured.");
             err
         })?;
         let hostname = configuration.get_communicator_hostname().into();
