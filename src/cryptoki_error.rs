@@ -1,4 +1,4 @@
-use std::sync::PoisonError;
+use std::{io, sync::PoisonError};
 
 use thiserror::Error;
 
@@ -83,6 +83,12 @@ impl From<PersistenceError> for CryptokiError {
 
 impl From<ConfigurationProviderError> for CryptokiError {
     fn from(_value: ConfigurationProviderError) -> Self {
+        Self::DeviceError
+    }
+}
+
+impl From<io::Error> for CryptokiError {
+    fn from(_value: io::Error) -> Self {
         Self::DeviceError
     }
 }

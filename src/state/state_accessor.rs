@@ -122,8 +122,8 @@ impl StateAccessor {
         ensure_file_structure()?;
 
         let env_configuration = EnvConfiguration::new().map_err(|err| {
-            eprintln!("Env configuration is not done properly: {:?}", err);
-            CryptokiError::DeviceError
+            eprintln!("Env configuration is not done properly. Please, consult the project documentation.");
+            err
         })?;
 
         let configuration: Arc<dyn ConfigurationProvider> = match env_configuration {
@@ -435,10 +435,14 @@ impl StateAccessor {
         configuration: &Arc<dyn ConfigurationProvider>,
         runtime: &Runtime,
     ) -> Result<Box<dyn Communicator>, CryptokiError> {
-        let configuration = configuration.get_interface_configuration()?;
+        let configuration = configuration.get_interface_configuration().map_err(|err|{
+            eprintln!("Couldn't get interface configuration. Either launch bridge controller, or provide appropriate ENV varriables.");
+            err
+        })?;
         let hostname = configuration.get_communicator_hostname().into();
         let certificate_path = configuration.get_communicator_certificate_path();
-        let cert = Certificate::from_pem(std::fs::read(certificate_path).unwrap());
+        let certificate = std::fs::read(certificate_path)?;
+        let cert = Certificate::from_pem(certificate);
 
         let meesign =
             runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
