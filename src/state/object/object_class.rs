@@ -16,6 +16,7 @@ pub(crate) enum ObjectClass {
     PrivateKey = 3,
     PublicKey = 4,
 }
+
 impl ObjectClass {
     pub(crate) fn from_vec(value: &[u8]) -> Option<Self> {
         if value.len() != (CK_OBJECT_CLASS::BITS / 8) as usize {

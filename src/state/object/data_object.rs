@@ -16,7 +16,7 @@ pub(crate) struct DataObject {
     attributes: Attributes,
 }
 // TODO: this one should not exist
-impl DataObject {}
+
 impl CryptokiObject for DataObject {
     fn from_parts(id: Uuid, attributes: Attributes) -> Self
     where
@@ -27,9 +27,11 @@ impl CryptokiObject for DataObject {
 
         Self { id, attributes }
     }
+
     fn does_template_match(&self, template: &Template) -> bool {
         self.attributes.do_attributes_match(template)
     }
+
     fn set_attribute(
         &mut self,
         attribute_type: CK_ATTRIBUTE_TYPE,
@@ -49,6 +51,7 @@ impl CryptokiObject for DataObject {
     fn get_value(&self) -> Option<AttributeValue> {
         self.get_attribute(CKA_VALUE as CK_ATTRIBUTE_TYPE)
     }
+
     fn from_template(template: Template) -> Self
     where
         Self: Sized,
@@ -74,6 +77,7 @@ impl CryptokiObject for DataObject {
     fn into_attributes(self) -> Attributes {
         self.attributes
     }
+
     fn get_attributes(&self) -> &Attributes {
         &self.attributes
     }

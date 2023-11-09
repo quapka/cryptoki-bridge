@@ -85,6 +85,7 @@ impl From<ObjectModel> for Arc<dyn CryptokiObject> {
 pub(crate) trait AttributeMatcher {
     fn do_attributes_match(&self, template: &Template) -> bool;
 }
+
 impl AttributeMatcher for Attributes {
     fn do_attributes_match(&self, template: &Template) -> bool {
         let template_attributes = template.get_attributes();

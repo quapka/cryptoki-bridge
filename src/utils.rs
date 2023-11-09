@@ -1,7 +1,3 @@
-use crate::{
-    cryptoki::bindings::CK_ATTRIBUTE_TYPE, state::object::cryptoki_object::AttributeValue,
-};
-
 const DER_OCTET_STRING_TYPE: u8 = 0x04;
 
 pub(crate) fn as_der_octet_string(public_key: &[u8]) -> Vec<u8> {
@@ -12,28 +8,6 @@ pub(crate) fn as_der_octet_string(public_key: &[u8]) -> Vec<u8> {
     octet_string.push(data_len);
     octet_string.extend(public_key);
     octet_string
-}
-
-pub trait ToAttributeValue {
-    fn to_attribute_value(self) -> AttributeValue;
-}
-
-impl ToAttributeValue for AttributeValue {
-    fn to_attribute_value(self) -> AttributeValue {
-        self
-    }
-}
-
-impl ToAttributeValue for u32 {
-    fn to_attribute_value(self) -> AttributeValue {
-        (self as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
-    }
-}
-
-impl ToAttributeValue for &str {
-    fn to_attribute_value(self) -> AttributeValue {
-        self.as_bytes().to_vec()
-    }
 }
 
 // TODO: don't panic

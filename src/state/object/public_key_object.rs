@@ -27,6 +27,7 @@ impl CryptokiObject for PublicKeyObject {
 
         Self { id, attributes }
     }
+
     fn set_attribute(
         &mut self,
         attribute_type: CK_ATTRIBUTE_TYPE,
@@ -36,6 +37,7 @@ impl CryptokiObject for PublicKeyObject {
             .insert(attribute_type, Some(value))
             .and_then(|x| x)
     }
+
     fn store_value(&mut self, value: AttributeValue) -> Option<AttributeValue> {
         self.attributes
             .insert(CKA_VALUE as CK_ATTRIBUTE_TYPE, Some(value))
@@ -45,6 +47,7 @@ impl CryptokiObject for PublicKeyObject {
     fn get_value(&self) -> Option<AttributeValue> {
         self.get_attribute(CKA_VALUE as CK_ATTRIBUTE_TYPE)
     }
+
     fn does_template_match(&self, template: &Template) -> bool {
         self.attributes.do_attributes_match(template)
     }
@@ -75,6 +78,7 @@ impl CryptokiObject for PublicKeyObject {
     fn into_attributes(self) -> Attributes {
         self.attributes
     }
+
     fn get_attributes(&self) -> &Attributes {
         &self.attributes
     }

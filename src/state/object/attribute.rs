@@ -1,10 +1,8 @@
-use crate::{
-    cryptoki::{
-        bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE},
-        utils::FromPointer,
-    },
-    utils::ToAttributeValue,
+use crate::cryptoki::{
+    bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE},
+    utils::FromPointer,
 };
+use crate::state::object::cryptoki_object::AttributeValue;
 
 pub(crate) struct Attribute {
     attribute_type: CK_ATTRIBUTE_TYPE,
@@ -49,5 +47,27 @@ impl Attribute {
             attribute_type,
             value,
         }
+    }
+}
+
+pub trait ToAttributeValue {
+    fn to_attribute_value(self) -> AttributeValue;
+}
+
+impl ToAttributeValue for AttributeValue {
+    fn to_attribute_value(self) -> AttributeValue {
+        self
+    }
+}
+
+impl ToAttributeValue for u32 {
+    fn to_attribute_value(self) -> AttributeValue {
+        (self as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
+    }
+}
+
+impl ToAttributeValue for &str {
+    fn to_attribute_value(self) -> AttributeValue {
+        self.as_bytes().to_vec()
     }
 }

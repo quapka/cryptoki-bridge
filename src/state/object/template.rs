@@ -36,6 +36,7 @@ impl Template {
     pub(crate) fn into_attributes(self) -> Attributes {
         self.attributes
     }
+
     pub(crate) fn get_attributes(&self) -> &Attributes {
         &self.attributes
     }

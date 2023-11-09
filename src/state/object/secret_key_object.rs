@@ -25,6 +25,7 @@ impl CryptokiObject for SecretKeyObject {
         ));
         Self { id, attributes }
     }
+
     fn store_value(&mut self, value: AttributeValue) -> Option<AttributeValue> {
         self.attributes
             .insert(CKA_VALUE as CK_ATTRIBUTE_TYPE, Some(value))
@@ -34,6 +35,7 @@ impl CryptokiObject for SecretKeyObject {
     fn get_value(&self) -> Option<AttributeValue> {
         self.get_attribute(CKA_VALUE as CK_ATTRIBUTE_TYPE)
     }
+
     fn set_attribute(
         &mut self,
         attribute_type: CK_ATTRIBUTE_TYPE,
@@ -43,6 +45,7 @@ impl CryptokiObject for SecretKeyObject {
             .insert(attribute_type, Some(value))
             .and_then(|x| x)
     }
+
     fn does_template_match(&self, template: &Template) -> bool {
         self.attributes.do_attributes_match(template)
     }
