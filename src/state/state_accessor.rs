@@ -445,8 +445,7 @@ impl StateAccessor {
         let certificate = std::fs::read(certificate_path)?;
         let cert = Certificate::from_pem(certificate);
 
-        let meesign =
-            runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await.unwrap() });
+        let meesign = runtime.block_on(async move { Meesign::new(hostname, 1337, cert).await })?;
         Ok(Box::new(meesign))
     }
 
