@@ -7,7 +7,8 @@ use crate::{
         EnvConfiguration,
     },
     cryptoki::bindings::{
-        CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,
+        CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO,
+        CK_TOKEN_INFO,
     },
     cryptoki_error::CryptokiError,
     persistence::SqliteCryptokiRepo,
@@ -24,7 +25,7 @@ use super::session::sessions::Sessions;
 use super::slots::{Slots, TokenStore};
 
 use super::{
-    object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch},
+    object::{cryptoki_object::CryptokiObject, object_search::ObjectSearch, template::Template},
     session::single_session::Signer,
 };
 
@@ -56,6 +57,7 @@ impl StateAccessor {
         encryptor: Aes128,
     ) -> Result<(), CryptokiError> {
         let mut sessions = SESSIONS.write()?;
+
         let mut session = sessions
             .as_mut()
             .ok_or(CryptokiError::CryptokiNotInitialized)?
@@ -384,6 +386,56 @@ impl StateAccessor {
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         Ok(session.get_keypair())
     }
+
+    // pub(crate) fn get_keypair_rsa(
+    //     &self,
+    //     session_handle: &CK_SESSION_HANDLE,
+    //     pub_key_template: &Template,
+    //     priv_key_template: &Template,
+    // ) -> Result<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE), CryptokiError> {
+    //     let mut sessions = SESSIONS.write()?;
+    //     let session = sessions
+    //         .as_mut()
+    //         .ok_or(CryptokiError::CryptokiNotInitialized)?
+    //         .get_session_mut(session_handle)
+    //         .ok_or(CryptokiError::SessionHandleInvalid)?;
+    //     Ok(session.get_keypair_rsa(pub_key_template, priv_key_template))
+    // }
+
+    pub(crate) fn get_communicator_keypair(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        pub_key_template: &Template,
+        // _ulPublicKeyAttributeCount: CK_ULONG,
+        priv_key_template: &Template,
+        // _ulPrivateKeyAttributeCount: CK_ULONG,
+    ) -> Result<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE), CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+
+        // FIXME the slot_id should not be a fixed value?!
+        // let slot_id = 1;
+        // let slots = SLOTS.read()?;
+        // let token = slots
+        //     .as_ref()
+        //     .ok_or(CryptokiError::CryptokiNotInitialized)?
+        //     .get_token(&slot_id)
+        //     .ok_or(CryptokiError::SlotIdInvalid)?;
+        let pubkey: GroupId = session.token.read().unwrap().get_public_key().into();
+        let token_label: String = session.token.read().unwrap().get_label().into();
+
+        Ok(session.create_communicator_keypair(
+            pubkey,
+            token_label,
+            pub_key_template,
+            priv_key_template,
+        ))
+    }
+
     pub(crate) fn get_filtered_handles(
         &self,
         session_handle: &CK_SESSION_HANDLE,

@@ -18,9 +18,22 @@ pub(crate) struct Slots {
 
 impl Slots {
     pub(crate) fn insert_token(&mut self, token: TokenStore) -> CK_SLOT_ID {
-        self.counter += 1;
-        self.tokens.insert(self.counter as CK_SLOT_ID, token);
+        // match self
+        //     .tokens
+        //     .iter()
+        //     .find_map(|(&id, &v)| if token == v { Some(id) } else { None })
+        // {
+        //     Some(id) => id as CK_SLOT_ID,
+        //     None => {
+        // FIXME this will work only for a single token
+        if self.counter == 0 {
+            self.counter += 1;
+            self.tokens.insert(self.counter as CK_SLOT_ID, token);
+        }
+
         self.counter as CK_SLOT_ID
+        // }
+        // }
     }
 
     pub(crate) fn new() -> Self {

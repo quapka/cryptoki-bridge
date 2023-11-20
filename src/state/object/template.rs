@@ -4,11 +4,17 @@ use crate::cryptoki::bindings::{CKA_CLASS, CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE};
 
 use super::{attribute::Attribute, cryptoki_object::Attributes, object_class::ObjectClass};
 
+#[derive(Clone)]
 pub(crate) struct Template {
     attributes: HashMap<CK_ATTRIBUTE_TYPE, Option<Vec<u8>>>,
 }
 
 impl Template {
+    pub(crate) fn new() -> Self {
+        Self {
+            attributes: HashMap::new(),
+        }
+    }
     pub(crate) fn from_vec(attributes: Vec<Attribute>) -> Self {
         let mut attributes_map = HashMap::new();
         attributes.into_iter().for_each(|attribute| {
@@ -20,6 +26,13 @@ impl Template {
         Self {
             attributes: attributes_map,
         }
+    }
+
+    pub(crate) fn set_value(&mut self, attr: Attribute) {
+        self.attributes.insert(
+            attr.get_attribute_type(),
+            attr.get_attribute_value().cloned(),
+        );
     }
 
     pub(crate) fn get_value(&self, key: &CK_ATTRIBUTE_TYPE) -> Option<Vec<u8>> {

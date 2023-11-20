@@ -5,9 +5,10 @@ use rand::{rngs::OsRng, Rng};
 use super::{
     bindings::{
         CKM_AES_KEY_GEN, CKM_AES_KEY_WRAP, CKM_AES_KEY_WRAP_PAD, CKM_ECDSA_KEY_PAIR_GEN,
-        CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID, CKR_OK,
-        CK_ATTRIBUTE_PTR, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_MECHANISM_TYPE, CK_OBJECT_HANDLE,
-        CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKM_RSA_PKCS, CKM_RSA_PKCS_KEY_PAIR_GEN, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED,
+        CKR_MECHANISM_INVALID, CKR_OK, CKR_VENDOR_DEFINED, CK_ATTRIBUTE_PTR, CK_BYTE_PTR,
+        CK_MECHANISM_PTR, CK_MECHANISM_TYPE, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
+        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     internals::encryption::{
         compute_pkcs7_padded_ciphertext_size, decrypt, destructure_iv_ciphertext, encrypt_pad,
@@ -94,22 +95,57 @@ pub unsafe fn C_GenerateKeyPair(
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
     let mechanism = unsafe { *pMechanism };
-    if mechanism.mechanism != CKM_ECDSA_KEY_PAIR_GEN as CK_MECHANISM_TYPE {
-        // we are supporting only ECDSA keys that are already generated externally
-        return CKR_MECHANISM_INVALID as CK_RV;
+    let pub_key_template = {
+        let template =
+            unsafe { Vec::from_pointer(_pPublicKeyTemplate, _ulPublicKeyAttributeCount as usize) };
+        Template::from(template)
+    };
+    let priv_key_template = {
+        let template = unsafe {
+            Vec::from_pointer(_pPrivateKeyTemplate, _ulPrivateKeyAttributeCount as usize)
+        };
+        Template::from(template)
+    };
+
+    if mechanism.mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN as CK_MECHANISM_TYPE {
+        let state_accessor = StateAccessor::new();
+        let (private_key_handle, pubkey_handle) = match state_accessor.get_communicator_keypair(
+            &hSession,
+            &pub_key_template,
+            &priv_key_template,
+        ) {
+            Ok(val) => val,
+            Err(err) => return err.into_ck_rv(),
+        };
+
+        unsafe {
+            *phPublicKey = pubkey_handle;
+            *phPrivateKey = private_key_handle;
+        };
+
+        return CKR_OK as CK_RV;
     }
-    let state_accessor = StateAccessor::new();
-    let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
-        Ok(val) => val,
-        Err(err) => return err.into_ck_rv(),
-    };
+    return CKR_MECHANISM_INVALID as CK_RV;
 
-    unsafe {
-        *phPublicKey = pubkey_handle;
-        *phPrivateKey = private_key_handle;
-    };
+    // if mechanism.mechanism != CKM_ECDSA_KEY_PAIR_GEN as CK_MECHANISM_TYPE
+    //     || mechanism.mechanism != CKM_RSA_PKCS as CK_MECHANISM_TYPE
+    // {
+    //     // we are supporting only ECDSA keys that are already generated externally
+    //     return CKR_MECHANISM_INVALID as CK_RV;
+    // }
 
-    CKR_OK as CK_RV
+    //     let state_accessor = StateAccessor::new();
+    //     let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
+    //         Ok(val) => val,
+    //         Err(err) => return err.into_ck_rv(),
+    //     };
+
+    //     unsafe {
+    //         *phPublicKey = pubkey_handle;
+    //         *phPrivateKey = private_key_handle;
+    //     };
+
+    //     CKR_OK as CK_RV
 }
 
 /// Wraps (i.e., encrypts) a private or secret key

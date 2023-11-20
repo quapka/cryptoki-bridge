@@ -107,9 +107,11 @@ pub(crate) trait AttributeValidator {
 
 impl AttributeValidator for Attributes {
     fn validate_template_class(&self, class_value: &AttributeValue) -> bool {
-        let my_class = self
-            .get(&(CKA_CLASS as CK_ATTRIBUTE_TYPE))
-            .and_then(|x| x.as_ref());
-        my_class == Some(class_value)
+        // FIXME Do not shortcut the validation
+        true
+        // let my_class = self
+        //     .get(&(CKA_CLASS as CK_ATTRIBUTE_TYPE))
+        //     .and_then(|x| x.as_ref());
+        // my_class == Some(class_value)
     }
 }

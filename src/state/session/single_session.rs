@@ -2,14 +2,17 @@ use std::{collections::HashMap, iter::Chain, sync::Arc, vec::IntoIter};
 
 use aes::Aes128;
 use openssl::hash::Hasher;
+use rsa::{pkcs1::DecodeRsaPublicKey, traits::PublicKeyParts, RsaPublicKey};
 use uuid::Uuid;
 
 use crate::{
     communicator::{AuthResponse, GroupId},
     cryptoki::bindings::{
-        CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_EC_PARAMS, CKA_EC_POINT, CKA_ID, CKA_KEY_TYPE,
-        CKA_LABEL, CKA_VALUE, CKK_ECDSA, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY, CK_FALSE,
-        CK_OBJECT_HANDLE,
+        CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_DECRYPT, CKA_EC_PARAMS, CKA_EC_POINT, CKA_ENCRYPT,
+        CKA_ID, CKA_KEY_TYPE, CKA_LABEL, CKA_MODULUS, CKA_MODULUS_BITS, CKA_PRIVATE,
+        CKA_PUBLIC_EXPONENT, CKA_SENSITIVE, CKA_SIGN, CKA_TOKEN, CKA_UNWRAP, CKA_VALUE, CKA_VERIFY,
+        CKA_WRAP, CKK_ECDSA, CKK_RSA, CKM_RSA_PKCS, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY,
+        CK_ATTRIBUTE_TYPE, CK_FALSE, CK_OBJECT_HANDLE, CK_TRUE,
     },
     cryptoki_error::CryptokiError,
     persistence::{persistence_error::PersistenceError, CryptokiRepo},
@@ -50,7 +53,7 @@ pub(crate) struct Session {
 
     // TODO: utilize token attribute
     #[allow(dead_code)]
-    token: TokenStore,
+    pub(crate) token: TokenStore,
 
     encryptor: Option<Aes128>,
 
@@ -98,12 +101,47 @@ impl Session {
             ephemeral_objects: HashMap::new(),
         };
 
-        session.key_pair = Some(session.create_communicator_keypair(pubkey, token_label));
+        session.key_pair = Some(session.create_communicator_keypair(
+            pubkey,
+            token_label,
+            &Template::new(),
+            &Template::new(),
+        ));
         session
     }
     pub fn get_keypair(&self) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         self.key_pair.unwrap()
     }
+    // pub fn get_keypair_rsa(
+    //     &self,
+    //     pubt: &Template,
+    //     privt: &Template,
+    // ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
+    //     let pubkey: GroupId = self.token.read().unwrap().get_public_key().into();
+    //     let token_label: String = self.token.read().unwrap().get_label().into();
+
+    //     let mut session = Self {
+    //         hasher: None,
+    //         object_search: None,
+    //         token,
+    //         encryptor: None,
+    //         signer: None,
+    //         object_search_iterator: None,
+    //         key_pair: None,
+    //         cryptoki_repo,
+    //         handle_resolver: HandleResolver::new(),
+    //         ephemeral_objects: HashMap::new(),
+    //     };
+
+    //     pubkey, privkey = Some(session.create_communicator_keypair(
+    //         pubkey,
+    //         token_label,
+    //         &Template::new(),
+    //         &Template::new(),
+    //     ));
+    //     (pubkey, privkey)
+    //     // self.key_pair.unwrap()
+    // }
     pub fn get_hasher(&self) -> Option<Hasher> {
         self.hasher.clone()
     }
@@ -230,12 +268,16 @@ impl Session {
         &mut self,
         pubkey: GroupId,
         token_label: String,
+        pub_key_template: &Template,
+        priv_key_template: &Template,
     ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
-        let pubkey_template = get_communicator_public_key_template(&token_label, pubkey.clone());
+        let pubkey_template =
+            get_communicator_public_key_template(&token_label, pubkey.clone(), pub_key_template);
         let pubkey_object = PublicKeyObject::from_template(pubkey_template);
         let pubkey_handle = self.create_ephemeral_object(Arc::new(pubkey_object));
 
-        let private_key_template = get_communicator_private_key_template(&token_label, pubkey);
+        let private_key_template =
+            get_communicator_private_key_template(&token_label, pubkey, priv_key_template);
         let private_key = PrivateKeyObject::from_template(private_key_template);
         let private_key_handle = self.create_ephemeral_object(Arc::new(private_key));
 
@@ -246,6 +288,7 @@ impl Session {
 fn get_communicator_common_key_attributes(
     token_label: &str,
     public_key: Vec<u8>,
+    template: &Template,
 ) -> Vec<Attribute> {
     let key_identifier: Vec<u8> = public_key
         .iter()
@@ -253,37 +296,125 @@ fn get_communicator_common_key_attributes(
         .take(KEYPAIR_IDENTIFIER_FROM_PUBLIC_PREFIX_LENGTH)
         .collect();
     vec![
-        Attribute::from_parts(CKA_LABEL, token_label),
+        // FIXME fixed values
+        Attribute::from_parts(
+            CKA_LABEL,
+            match template.get_value(&(CKA_LABEL as CK_ATTRIBUTE_TYPE)) {
+                Some(label) => label,
+                None => token_label.into(),
+                // Attribute::from_parts(CKA_LABEL, token_label),
+                // Attribute::from_parts(CKA_LABEL, vec![0x6D, 0x73]),
+            },
+        ),
         Attribute::from_parts(CKA_VALUE, public_key),
-        Attribute::from_parts(CKA_ID, key_identifier),
+        // Attribute::from_parts(CKA_ID, key_identifier),
+        Attribute::from_parts(
+            CKA_ID,
+            match template.get_value(&(CKA_ID as CK_ATTRIBUTE_TYPE)) {
+                Some(label) => label,
+                None => key_identifier,
+                // Attribute::from_parts(CKA_LABEL, token_label),
+                // Attribute::from_parts(CKA_LABEL, vec![0x6D, 0x73]),
+            },
+        ),
     ]
 }
 
-fn get_communicator_public_key_template(token_label: &str, public_key: AttributeValue) -> Template {
+fn get_communicator_public_key_template(
+    token_label: &str,
+    public_key: AttributeValue,
+    pub_key_template: &Template,
+) -> Template {
     let mut common_attributes =
-        get_communicator_common_key_attributes(token_label, public_key.clone());
-    let ec_params = hex::decode(NIST_P256_EC_PARAMS_DER_HEX).unwrap();
-    let mut attributes = vec![
-        Attribute::from_parts(CKA_KEY_TYPE, CKK_ECDSA),
-        Attribute::from_parts(CKA_EC_PARAMS, ec_params),
-        Attribute::from_parts(CKA_EC_POINT, as_der_octet_string(&public_key)),
-        Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
-    ];
-    attributes.append(&mut common_attributes);
+        get_communicator_common_key_attributes(token_label, public_key.clone(), pub_key_template);
+    // FIXME add a test
+    let key = RsaPublicKey::from_pkcs1_der(&public_key).unwrap();
+    let key_size = (key.size() * 8) as u32;
 
-    Template::from_vec(attributes)
+    //  Attribute: 266 (CKA_VERIFY)
+    //  Attribute: 262 (CKA_WRAP)
+    //  Attribute: 260 (CKA_ENCRYPT)
+    //  Attribute: 3 (CKA_LABEL)
+    //  Attribute: 290 (CKA_PUBLIC_EXPONENT)
+    //  Attribute: 258 (CKA_ID)
+    //  Attribute: 289 (CKA_MODULUS_BITS)
+    //  Attribute: 1 (CKA_TOKEN)
+    //  Attribute: 1073743360 (CKA_ALLOWED_MECHANISMS)
+    //  Attribute: 256 (CKA_KEY_TYPE)
+    //  Attribute: 0 (CKA_CLASS)
+    //
+
+    // CKA_VERIFY,
+    // CKA_WRAP,
+    // CKA_ENCRYPT,
+    // CKA_LABEL,
+    // CKA_PUBLIC_EXPONENT,
+    // CKA_ID,
+    // CKA_MODULUS_BITS,
+    // CKA_TOKEN,
+    // CKA_ALLOWED_MECHANISMS,
+    // CKA_KEY_TYPE,
+    // CKA_CLASS,
+    let mut template = pub_key_template.clone();
+    template.set_value(Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()));
+    // template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY));
+    template
+    // let mut attributes = pub_key_template.get_attributes().to_vec();
+    // attributes.append(vec![
+    //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
+    //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
+    // ]);
+    // let mut attributes = vec![
+    //     Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
+    //     Attribute::from_parts(CKA_KEY_TYPE, CKK_RSA),
+    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
+    //     Attribute::from_parts(CKA_WRAP, CK_FALSE),
+    //     Attribute::from_parts(CKA_VERIFY, CK_TRUE),
+    //     Attribute::from_parts(CKA_ENCRYPT, CK_FALSE),
+    //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
+    //     Attribute::from_parts(CKA_MODULUS_BITS, key_size),
+    //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
+    // ];
+    // attributes.append(&mut common_attributes);
+
+    // Template::from_vec(attributes)
 }
 
 fn get_communicator_private_key_template(
     token_label: &str,
     public_key: AttributeValue,
+    priv_key_template: &Template,
 ) -> Template {
-    let mut common_attributes = get_communicator_common_key_attributes(token_label, public_key);
-    let mut attributes = vec![
-        Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
-        Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
-    ];
-    attributes.append(&mut common_attributes);
+    let mut template = priv_key_template.clone();
+    // template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY));
+    template
 
-    Template::from_vec(attributes)
+    // let mut common_attributes =
+    //     get_communicator_common_key_attributes(token_label, public_key, priv_key_template);
+    // let mut attributes = vec![
+    //     Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
+    //     Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
+    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
+    //     Attribute::from_parts(CKA_PRIVATE, CK_TRUE),
+    //     Attribute::from_parts(CKA_SENSITIVE, CK_TRUE),
+    //     Attribute::from_parts(CKA_SIGN, CK_TRUE),
+    //     Attribute::from_parts(CKA_UNWRAP, CK_FALSE),
+    //     Attribute::from_parts(CKA_DECRYPT, CK_FALSE),
+    //     // {CKA_SUBJECT, subject, sizeof(subject)},
+    //     // {CKA_ID, id, sizeof(id)},
+    //     // {CKA_SENSITIVE, &true, sizeof(true)},
+    //     // {CKA_DECRYPT, &true, sizeof(true)},
+    //     // {CKA_SIGN, &true, sizeof(true)},
+    //     // {CKA_UNWRAP, &true, sizeof(true)}
+    // ];
+    // attributes.append(&mut common_attributes);
+
+    // Template::from_vec(attributes)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_parsing_rsa_key() {}
 }
