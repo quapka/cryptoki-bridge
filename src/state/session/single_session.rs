@@ -8,11 +8,11 @@ use uuid::Uuid;
 use crate::{
     communicator::{AuthResponse, GroupId},
     cryptoki::bindings::{
-        CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_DECRYPT, CKA_EC_PARAMS, CKA_EC_POINT, CKA_ENCRYPT,
-        CKA_ID, CKA_KEY_TYPE, CKA_LABEL, CKA_MODULUS, CKA_MODULUS_BITS, CKA_PRIVATE,
-        CKA_PUBLIC_EXPONENT, CKA_SENSITIVE, CKA_SIGN, CKA_TOKEN, CKA_UNWRAP, CKA_VALUE, CKA_VERIFY,
-        CKA_WRAP, CKK_ECDSA, CKK_RSA, CKM_RSA_PKCS, CKO_PRIVATE_KEY, CKO_PUBLIC_KEY,
-        CK_ATTRIBUTE_TYPE, CK_FALSE, CK_OBJECT_HANDLE, CK_TRUE,
+        CKA_ALLOWED_MECHANISMS, CKA_ALWAYS_AUTHENTICATE, CKA_CLASS, CKA_DECRYPT, CKA_EC_PARAMS,
+        CKA_EC_POINT, CKA_ENCRYPT, CKA_ID, CKA_KEY_TYPE, CKA_LABEL, CKA_MODULUS, CKA_MODULUS_BITS,
+        CKA_PRIVATE, CKA_PUBLIC_EXPONENT, CKA_SENSITIVE, CKA_SIGN, CKA_TOKEN, CKA_UNWRAP,
+        CKA_VALUE, CKA_VERIFY, CKA_WRAP, CKK_ECDSA, CKK_RSA, CKM_RSA_PKCS, CKO_PRIVATE_KEY,
+        CKO_PUBLIC_KEY, CK_ATTRIBUTE_TYPE, CK_FALSE, CK_OBJECT_HANDLE, CK_TRUE,
     },
     cryptoki_error::CryptokiError,
     persistence::{persistence_error::PersistenceError, CryptokiRepo},
@@ -49,7 +49,7 @@ pub(crate) struct Session {
     // TODO: objects should be held by the token struct
     // TODO: also store token ID
     // TODO: RwLock
-    handle_resolver: HandleResolver,
+    pub(crate) handle_resolver: HandleResolver,
 
     // TODO: utilize token attribute
     #[allow(dead_code)]
@@ -62,7 +62,7 @@ pub(crate) struct Session {
     key_pair: Option<(CK_OBJECT_HANDLE, CK_OBJECT_HANDLE)>,
 
     cryptoki_repo: Arc<dyn CryptokiRepo>,
-    pub ephemeral_objects: HashMap<Uuid, Arc<dyn CryptokiObject>>,
+    pub(crate) ephemeral_objects: HashMap<Uuid, Arc<dyn CryptokiObject>>,
 }
 
 #[derive(Clone)]
@@ -306,7 +306,7 @@ fn get_communicator_common_key_attributes(
                 // Attribute::from_parts(CKA_LABEL, vec![0x6D, 0x73]),
             },
         ),
-        Attribute::from_parts(CKA_VALUE, public_key),
+        // Attribute::from_parts(CKA_VALUE, public_key),
         // Attribute::from_parts(CKA_ID, key_identifier),
         Attribute::from_parts(
             CKA_ID,
@@ -355,29 +355,30 @@ fn get_communicator_public_key_template(
     // CKA_ALLOWED_MECHANISMS,
     // CKA_KEY_TYPE,
     // CKA_CLASS,
-    let mut template = pub_key_template.clone();
-    template.set_value(Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()));
+    // let mut template = pub_key_template.clone();
+    // template.set_value(Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()));
     // template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY));
-    template
+    // template
     // let mut attributes = pub_key_template.get_attributes().to_vec();
     // attributes.append(vec![
     //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
     //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
     // ]);
-    // let mut attributes = vec![
-    //     Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
-    //     Attribute::from_parts(CKA_KEY_TYPE, CKK_RSA),
-    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
-    //     Attribute::from_parts(CKA_WRAP, CK_FALSE),
-    //     Attribute::from_parts(CKA_VERIFY, CK_TRUE),
-    //     Attribute::from_parts(CKA_ENCRYPT, CK_FALSE),
-    //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
-    //     Attribute::from_parts(CKA_MODULUS_BITS, key_size),
-    //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
-    // ];
-    // attributes.append(&mut common_attributes);
+    let mut attributes = vec![
+        Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
+        Attribute::from_parts(CKA_KEY_TYPE, CKK_RSA),
+        Attribute::from_parts(CKA_TOKEN, CK_TRUE),
+        Attribute::from_parts(CKA_WRAP, CK_FALSE),
+        Attribute::from_parts(CKA_VERIFY, CK_TRUE),
+        Attribute::from_parts(CKA_ENCRYPT, CK_FALSE),
+        Attribute::from_parts(CKA_ALLOWED_MECHANISMS, CKM_RSA_PKCS),
+        Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
+        Attribute::from_parts(CKA_MODULUS_BITS, key_size),
+        Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
+    ];
+    attributes.append(&mut common_attributes);
 
-    // Template::from_vec(attributes)
+    Template::from_vec(attributes)
 }
 
 fn get_communicator_private_key_template(
@@ -385,31 +386,32 @@ fn get_communicator_private_key_template(
     public_key: AttributeValue,
     priv_key_template: &Template,
 ) -> Template {
-    let mut template = priv_key_template.clone();
+    // let mut template = priv_key_template.clone();
     // template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY));
-    template
+    // template
 
-    // let mut common_attributes =
-    //     get_communicator_common_key_attributes(token_label, public_key, priv_key_template);
-    // let mut attributes = vec![
-    //     Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
-    //     Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
-    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
-    //     Attribute::from_parts(CKA_PRIVATE, CK_TRUE),
-    //     Attribute::from_parts(CKA_SENSITIVE, CK_TRUE),
-    //     Attribute::from_parts(CKA_SIGN, CK_TRUE),
-    //     Attribute::from_parts(CKA_UNWRAP, CK_FALSE),
-    //     Attribute::from_parts(CKA_DECRYPT, CK_FALSE),
-    //     // {CKA_SUBJECT, subject, sizeof(subject)},
-    //     // {CKA_ID, id, sizeof(id)},
-    //     // {CKA_SENSITIVE, &true, sizeof(true)},
-    //     // {CKA_DECRYPT, &true, sizeof(true)},
-    //     // {CKA_SIGN, &true, sizeof(true)},
-    //     // {CKA_UNWRAP, &true, sizeof(true)}
-    // ];
-    // attributes.append(&mut common_attributes);
+    let mut common_attributes =
+        get_communicator_common_key_attributes(token_label, public_key, priv_key_template);
+    let mut attributes = vec![
+        Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
+        Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
+        Attribute::from_parts(CKA_TOKEN, CK_TRUE),
+        Attribute::from_parts(CKA_PRIVATE, CK_TRUE),
+        Attribute::from_parts(CKA_SENSITIVE, CK_TRUE),
+        Attribute::from_parts(CKA_SIGN, CK_TRUE),
+        Attribute::from_parts(CKA_UNWRAP, CK_FALSE),
+        Attribute::from_parts(CKA_ALLOWED_MECHANISMS, CKM_RSA_PKCS),
+        Attribute::from_parts(CKA_DECRYPT, CK_FALSE),
+        // {CKA_SUBJECT, subject, sizeof(subject)},
+        // {CKA_ID, id, sizeof(id)},
+        // {CKA_SENSITIVE, &true, sizeof(true)},
+        // {CKA_DECRYPT, &true, sizeof(true)},
+        // {CKA_SIGN, &true, sizeof(true)},
+        // {CKA_UNWRAP, &true, sizeof(true)}
+    ];
+    attributes.append(&mut common_attributes);
 
-    // Template::from_vec(attributes)
+    Template::from_vec(attributes)
 }
 
 #[cfg(test)]

@@ -4,11 +4,12 @@ use rand::{rngs::OsRng, Rng};
 
 use super::{
     bindings::{
-        CKA_CLASS, CKM_AES_KEY_GEN, CKM_AES_KEY_WRAP, CKM_AES_KEY_WRAP_PAD, CKM_ECDSA_KEY_PAIR_GEN,
-        CKM_RSA_PKCS, CKM_RSA_PKCS_KEY_PAIR_GEN, CKO_PUBLIC_KEY, CKR_ARGUMENTS_BAD,
-        CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID, CKR_OK, CKR_VENDOR_DEFINED,
-        CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR, CK_MECHANISM_PTR, CK_MECHANISM_TYPE,
-        CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV, CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
+        CKA_CLASS, CKA_ID, CKM_AES_KEY_GEN, CKM_AES_KEY_WRAP, CKM_AES_KEY_WRAP_PAD,
+        CKM_ECDSA_KEY_PAIR_GEN, CKM_RSA_PKCS, CKM_RSA_PKCS_KEY_PAIR_GEN, CKO_PRIVATE_KEY,
+        CKO_PUBLIC_KEY, CKR_ARGUMENTS_BAD, CKR_FUNCTION_NOT_SUPPORTED, CKR_MECHANISM_INVALID,
+        CKR_OK, CKR_VENDOR_DEFINED, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_BYTE_PTR,
+        CK_MECHANISM_PTR, CK_MECHANISM_TYPE, CK_OBJECT_HANDLE, CK_OBJECT_HANDLE_PTR, CK_RV,
+        CK_SESSION_HANDLE, CK_ULONG, CK_ULONG_PTR,
     },
     internals::encryption::{
         compute_pkcs7_padded_ciphertext_size, decrypt, destructure_iv_ciphertext, encrypt_pad,
@@ -98,20 +99,20 @@ pub unsafe fn C_GenerateKeyPair(
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
     let mechanism = unsafe { *pMechanism };
-    let pub_key_template = {
-        let template =
-            unsafe { Vec::from_pointer(_pPublicKeyTemplate, _ulPublicKeyAttributeCount as usize) };
-        Template::from(template)
-    };
-    let priv_key_template = {
-        let template = unsafe {
-            Vec::from_pointer(_pPrivateKeyTemplate, _ulPrivateKeyAttributeCount as usize)
-        };
-        Template::from(template)
-    };
+    // let pub_key_template = {
+    //     let template =
+    //         unsafe { Vec::from_pointer(_pPublicKeyTemplate, _ulPublicKeyAttributeCount as usize) };
+    //     Template::from(template)
+    // };
+    // let priv_key_template = {
+    //     let template = unsafe {
+    //         Vec::from_pointer(_pPrivateKeyTemplate, _ulPrivateKeyAttributeCount as usize)
+    //     };
+    //     Template::from(template)
+    // };
 
     if mechanism.mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN as CK_MECHANISM_TYPE {
-        let state_accessor = StateAccessor::new();
+        // let state_accessor = StateAccessor::new();
         let mut sessions = SESSIONS.write().unwrap();
         let session = sessions
             .as_mut()
@@ -128,18 +129,28 @@ pub unsafe fn C_GenerateKeyPair(
             })
             .expect("No public key found");
 
-        let (private_key_handle, pubkey_handle) = match state_accessor.get_communicator_keypair(
-            &hSession,
-            &pub_key_template,
-            &priv_key_template,
-        ) {
-            Ok(val) => val,
-            Err(err) => return err.into_ck_rv(),
-        };
+        let meesign_privkey = session
+            .ephemeral_objects
+            .values()
+            .find(|obj| {
+                obj.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap()
+                    == (CKO_PRIVATE_KEY as CK_ATTRIBUTE_TYPE)
+                        .to_le_bytes()
+                        .to_vec()
+            })
+            .expect("No private key found");
+
+        let ms_pubkey_handle = session
+            .handle_resolver
+            .get_or_insert_object_handle(*meesign_pubkey.get_id());
+
+        let ms_privkey_handle = session
+            .handle_resolver
+            .get_or_insert_object_handle(*meesign_privkey.get_id());
 
         unsafe {
-            *phPublicKey = pubkey_handle;
-            *phPrivateKey = private_key_handle;
+            *phPublicKey = ms_pubkey_handle;
+            *phPrivateKey = ms_privkey_handle;
         };
 
         return CKR_OK as CK_RV;

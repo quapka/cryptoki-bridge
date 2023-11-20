@@ -35,7 +35,7 @@
           # MeeSign config
           COMMUNICATOR_HOSTNAME = "meesign.local"; #- sets the meesign hostname, e.g., meesign.crocs.fi.muni.cz (required)
           COMMUNICATOR_CERTIFICATE_PATH = "/home/qup/projects/meesign-server/keys/meesign-ca-cert.pem"; # - provides the library with the path to the CA certificate (required)
-          GROUP_ID = "304802410090f7600cbdca772e8471f31c7fb84823d3ed5434ef3a657704ddf7aa2bdb284e7a347afc09da0d108bdaac0645008f4b072957dca628f66865641c1555355af50203010001";
+          GROUP_ID = "308201090282010067adff7c8b80271cb1f085958a854684a092d10b8c9fd44dbec67dfe5fe4f251ff1bf36ebb9ebff86ac742340769da037ca523440ceafca1308a0fee7559d3a3322161ee163aa734c32fe8fdc70756cb26130ced5d30e3ddf37fe4344b107fd7f85f0a81c0020178b818af1f14ebef796ae9a10b4529a1f931aa2342818342285e34077a1b18e8a443bb98efcf8f713748d2156ac759d529421f2bd0fca03230b34e8f9592a58cf8c886fc3128ca863159f5826b6412de83b72fbc2197896662b36feeab9c88cf827414ab2d00cc13b89d719886b7bee8697f0f9ad409501ad07fbcadbc5a87403113527125ef9b2920b5ce63b68d97cd000946f665bccb3ef50203010001";
 
           # Specifies the path to the original PKCS#11 library. Value needs to be provided without the enclosing quotes. When this variable is not defined all logger functions return CKR_GENERAL_ERROR and print information about missing environment variable to the stderr.
           PKCS11_LOGGER_LIBRARY_PATH = "/home/qup/projects/cryptoki-bridge/target/release/libcryptoki_bridge.so";
