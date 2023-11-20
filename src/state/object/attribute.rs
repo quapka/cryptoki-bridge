@@ -2,7 +2,7 @@ use crate::cryptoki::{
     bindings::{CK_ATTRIBUTE, CK_ATTRIBUTE_TYPE},
     utils::FromPointer,
 };
-use crate::state::object::cryptoki_object::AttributeValue;
+use crate::state::object::cryptoki_object::{AttributeValue, ByteVector};
 
 pub(crate) struct Attribute {
     attribute_type: CK_ATTRIBUTE_TYPE,
@@ -71,3 +71,9 @@ impl ToAttributeValue for &str {
         self.as_bytes().to_vec()
     }
 }
+
+// impl ToAttributeValue for ByteVector {
+//     fn to_attribute_value(self) -> AttributeValue {
+//         self.into()
+//     }
+// }

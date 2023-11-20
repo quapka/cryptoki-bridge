@@ -7,8 +7,8 @@ use crate::{
         EnvConfiguration,
     },
     cryptoki::bindings::{
-        CK_ATTRIBUTE_PTR, CK_OBJECT_HANDLE, CK_SESSION_HANDLE, CK_SLOT_ID, CK_SLOT_INFO,
-        CK_TOKEN_INFO,
+        CKA_CLASS, CK_ATTRIBUTE_PTR, CK_ATTRIBUTE_TYPE, CK_OBJECT_HANDLE, CK_SESSION_HANDLE,
+        CK_SLOT_ID, CK_SLOT_INFO, CK_TOKEN_INFO,
     },
     cryptoki_error::CryptokiError,
     persistence::SqliteCryptokiRepo,
@@ -20,6 +20,7 @@ use openssl::hash::Hasher;
 use std::{fs, path::PathBuf, sync::Arc};
 use tokio::runtime::Runtime;
 use tonic::transport::Certificate;
+use uuid::Uuid;
 
 use super::session::sessions::Sessions;
 use super::slots::{Slots, TokenStore};
@@ -328,6 +329,28 @@ impl StateAccessor {
             .get_session_mut(session_handle)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
         Ok(session.create_ephemeral_object(object))
+    }
+
+    pub(crate) fn get_ephemeral_object_id(
+        &self,
+        session_handle: &CK_SESSION_HANDLE,
+        attr: CK_ATTRIBUTE_TYPE,
+    ) -> Result<Uuid, CryptokiError> {
+        let mut sessions = SESSIONS.write()?;
+        let session = sessions
+            .as_mut()
+            .ok_or(CryptokiError::CryptokiNotInitialized)?
+            .get_session_mut(session_handle)
+            .ok_or(CryptokiError::SessionHandleInvalid)?;
+        let (id, _) = session
+            .ephemeral_objects
+            .iter_mut()
+            .find(|(_, obj)| {
+                obj.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap()
+                    == (attr).to_le_bytes().to_vec()
+            })
+            .expect("no object found by the attribute");
+        Ok(*id)
     }
 
     pub(crate) fn destroy_object(
