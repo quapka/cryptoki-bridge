@@ -153,7 +153,7 @@ impl StateAccessor {
     pub(crate) fn set_hasher(
         &self,
         session: &CK_SESSION_HANDLE,
-        hashser: Hasher,
+        hasher: Hasher,
     ) -> Result<(), CryptokiError> {
         let mut sessions = SESSIONS.write()?;
         let session = sessions
@@ -161,7 +161,7 @@ impl StateAccessor {
             .ok_or(CryptokiError::CryptokiNotInitialized)?
             .get_session_mut(session)
             .ok_or(CryptokiError::SessionHandleInvalid)?;
-        session.set_hasher(hashser);
+        session.set_hasher(hasher);
         Ok(())
     }
 
