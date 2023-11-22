@@ -6,6 +6,7 @@ use crate::communicator::GroupId;
 #[derive(Deserialize, Clone)]
 pub(crate) struct InterfaceConfigurationResponse {
     communicator_hostname: String,
+    communicator_port: u16,
     communicator_certificate_path: String,
     group_id: GroupId,
 }
@@ -13,6 +14,10 @@ pub(crate) struct InterfaceConfigurationResponse {
 impl InterfaceConfigurationResponse {
     pub fn get_communicator_hostname(&self) -> &str {
         &self.communicator_hostname
+    }
+
+    pub fn get_communicator_port(&self) -> u16 {
+        self.communicator_port
     }
 
     pub fn get_group_id(&self) -> &GroupId {

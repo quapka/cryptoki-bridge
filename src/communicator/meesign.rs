@@ -30,7 +30,7 @@ pub(crate) struct Meesign {
 impl Meesign {
     pub async fn new(
         hostname: String,
-        port: u32,
+        port: u16,
         certificate: Certificate,
     ) -> Result<Self, CommunicatorError> {
         let server_uri = Uri::from_str(&format!("https://{}:{}", &hostname, port))?;
