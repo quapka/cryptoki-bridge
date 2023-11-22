@@ -61,6 +61,7 @@ impl EnvConfiguration {
             (Err(VarError::NotPresent), Err(VarError::NotPresent), Ok(None)) => return Ok(None),
             (hostname, id, path) => {
                 hostname?;
+                todo!("Should port be specified here as well?");
                 id?;
                 path?;
                 unreachable!()
