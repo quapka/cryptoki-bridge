@@ -11,7 +11,7 @@ static COMMUNICATOR_PORT_ENV_NAME: &str = "COMMUNICATOR_PORT";
 static GROUP_ID_ENV_NAME: &str = "GROUP_ID";
 static COMMUNICATOR_CERTIFICATE_PATH_ENV_NAME: &str = "COMMUNICATOR_CERTIFICATE_PATH";
 
-static MEESIGN_SERVER_DEFAULT_PORT: u16 = 1337;
+static COMMUNICATOR_SERVER_DEFAULT_PORT: u16 = 1337;
 
 /// Provides configuration from the environment variables
 pub(crate) struct EnvConfiguration {
@@ -45,9 +45,9 @@ impl EnvConfiguration {
         let port = match Self::get_communicator_port() {
             Ok(value) => match value.parse::<u16>() {
                 Ok(number) => number,
-                Err(_) => MEESIGN_SERVER_DEFAULT_PORT,
+                Err(_) => COMMUNICATOR_SERVER_DEFAULT_PORT,
             },
-            Err(_) => MEESIGN_SERVER_DEFAULT_PORT,
+            Err(_) => COMMUNICATOR_SERVER_DEFAULT_PORT,
         };
         let cert_path = Self::get_communicator_certificate_path();
         let group_id = Self::get_group_id();
