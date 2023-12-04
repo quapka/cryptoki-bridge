@@ -311,7 +311,6 @@ fn get_communicator_common_key_attributes(
             key.n().to_bytes_be()
         }),
         Attribute::from_parts(CKA_VALUE, public_key),
-        Attribute::from_parts(CKA_SUBJECT, "ACME".as_bytes().to_vec()),
         // Attribute::from_parts(CKA_ID, key_identifier),
         Attribute::from_parts(
             CKA_ID,
@@ -365,10 +364,10 @@ fn get_communicator_public_key_template(
         key.n().to_bytes_be()
     }));
     template.set_value(Attribute::from_parts(CKA_VALUE, public_key));
-    template.set_value(Attribute::from_parts(
-        CKA_SUBJECT,
-        "ACME".as_bytes().to_vec(),
-    ));
+    // template.set_value(Attribute::from_parts(
+    //     CKA_SUBJECT,
+    //     "ACME".as_bytes().to_vec(),
+    // ));
     template
     // let mut file = File::create("/home/xroad/logs/cryptoki.echoes").unwrap();
     // file.write_all(
@@ -416,10 +415,10 @@ fn get_communicator_private_key_template(
         key.n().to_bytes_be()
     }));
     template.set_value(Attribute::from_parts(CKA_VALUE, public_key));
-    template.set_value(Attribute::from_parts(
-        CKA_SUBJECT,
-        "ACME".as_bytes().to_vec(),
-    ));
+    // template.set_value(Attribute::from_parts(
+    //     CKA_SUBJECT,
+    //     "ACME".as_bytes().to_vec(),
+    // ));
     template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY));
     template
 
