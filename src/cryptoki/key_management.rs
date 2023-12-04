@@ -100,8 +100,6 @@ pub unsafe fn C_GenerateKeyPair(
     phPublicKey: CK_OBJECT_HANDLE_PTR,
     phPrivateKey: CK_OBJECT_HANDLE_PTR,
 ) -> CK_RV {
-    // let mut log = File::create("/home/xroad/logs/C_GenerateKeyPair-started").unwrap();
-    // log.write_all(b"").unwrap();
     let mechanism = unsafe { *pMechanism };
     let pubkey_template = {
         let template =
@@ -115,58 +113,9 @@ pub unsafe fn C_GenerateKeyPair(
         };
         Template::from(template)
     };
-    // let mut log = File::create("/home/xroad/logs/C_GenerateKeyPair template").unwrap();
-    // log.write_all(b"").unwrap();
-    // log.write_all(
-    //     format!(
-    //         "{:?}",
-    //         match pubkey_template.get_value(&(CKA_PUBLIC_EXPONENT as CK_ATTRIBUTE_TYPE)) {
-    //             Some(value) => value,
-    //             None => "Missing CKA_PUBLIC_EXPONENT".into(),
-    //         }
-    //     )
-    //     .as_bytes(),
-    // )
-    // .unwrap();
 
     if mechanism.mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN as CK_MECHANISM_TYPE {
         let state_accessor = StateAccessor::new();
-        // let log = File::create("/home/xroad/logs/C_GenerateKeyPair-get_communicator_keypair-start")
-        //     .unwrap();
-        // log.write_all(b"").unwrap();
-        // let (privkey_handle, pubkey_handle) = match state_accessor.get_communicator_keypair(
-        //     &hSession,
-        //     &pubkey_template,
-        //     &privkey_template,
-        // ) {
-        //     Ok(val) => val,
-        //     Err(err) => return err.into_ck_rv(),
-        // };
-        // let log = File::create("/home/xroad/logs/C_GenerateKeyPair-get_communicator_keypair-end")
-        //     .unwrap();
-        // log.write_all(b"").unwrap();
-        // {
-        // let mut log =
-        //     File::create("/home/xroad/logs/C_GenerateKeyPair-get_keypair-start").unwrap();
-        // log.write_all(b"").unwrap();
-        // let (pk, sk) = match state_accessor.get_keypair(&hSession) {
-        //     Ok(val) => val,
-        //     Err(err) => return err.into_ck_rv(),
-        // };
-        // let mut log =
-        //     File::create("/home/xroad/logs/C_GenerateKeyPair-get_keypair-end").unwrap();
-        // log.write_all(b"").unwrap();
-        // let mut log = File::create("/home/xroad/logs/handles").unwrap();
-        // log.write_all(format!("origo   pub:{:?}\n", pk).as_bytes())
-        // .unwrap();
-        // log.write_all(format!("origo  priv:{:?}\n", sk).as_bytes())
-        // .unwrap();
-        // }
-
-        // let mut log =
-        // File::create("/home/xroad/logs/C_GenerateKeyPair-get_ephemeral_object_id-start")
-        // .unwrap();
-        // log.write_all(b"").unwrap();
         let meesign_pubkey_id = state_accessor
             .get_ephemeral_object_id(&hSession, CKO_PUBLIC_KEY as CK_ATTRIBUTE_TYPE)
             .unwrap();
@@ -174,28 +123,6 @@ pub unsafe fn C_GenerateKeyPair(
         let meesign_privkey_id = state_accessor
             .get_ephemeral_object_id(&hSession, CKO_PRIVATE_KEY as CK_ATTRIBUTE_TYPE)
             .unwrap();
-        // let mut log =
-        // File::create("/home/xroad/logs/C_GenerateKeyPair-get_ephemeral_object_id-stop")
-        // .unwrap();
-        // log.write_all(b"").unwrap();
-
-        // let (privkey_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
-        //     Ok(val) => val,
-        //     Err(err) => return err.into_ck_rv(),
-        // };
-        // let mut pubo = session.destroy_object(&pubkey_handle).unwrap().expect("");
-        // let mut Arc::get_mut(&mut pubo).unwrap();
-
-        // {
-        //     let (meesign_pubkey_id, meesign_pubkey_value) = session
-        //         .ephemeral_objects
-        //         .iter_mut()
-        //         .find(|(_, obj)| {
-        //             obj.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap()
-        //                 == (CKO_PUBLIC_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
-        //         })
-        //         .expect("No public key found");
-        // }
 
         {
             let mut sessions = SESSIONS.write().unwrap();
@@ -204,10 +131,6 @@ pub unsafe fn C_GenerateKeyPair(
                 .unwrap()
                 .get_session_mut(&hSession)
                 .unwrap();
-            // let mut log =
-            // File::create("/home/xroad/logs/C_GenerateKeyPair-update_pub_template-start")
-            // .unwrap();
-            // log.write_all(b"").unwrap();
             // FIXME maybe do not iterate over all of the values?
             let mut meesign_pubkey = session
                 .ephemeral_objects
@@ -228,10 +151,6 @@ pub unsafe fn C_GenerateKeyPair(
                         .unwrap()
                         .set_attribute(key, value.clone().expect("").into());
                 });
-            // let mut log =
-            //     File::create("/home/xroad/logs/C_GenerateKeyPair-update_pub_template-stop")
-            //         .unwrap();
-            // log.write_all(b"").unwrap();
         }
 
         {
@@ -241,10 +160,6 @@ pub unsafe fn C_GenerateKeyPair(
                 .unwrap()
                 .get_session_mut(&hSession)
                 .unwrap();
-            // let mut log =
-            //     File::create("/home/xroad/logs/C_GenerateKeyPair-update_priv_template-start")
-            //         .unwrap();
-            // log.write_all(b"").unwrap();
             let mut meesign_privkey = session
                 .ephemeral_objects
                 .get_mut(&meesign_privkey_id)
@@ -258,107 +173,42 @@ pub unsafe fn C_GenerateKeyPair(
                         .unwrap()
                         .set_attribute(key, value.clone().expect("").into());
                 });
-            // let mut log =
-            //     File::create("/home/xroad/logs/C_GenerateKeyPair-update_priv_template-stop")
-            //         .unwrap();
-            // log.write_all(b"").unwrap();
         }
 
-        // let meesign_pubkey = session
-        //     .ephemeral_objects
-        //     .values()
-        //     .find(|obj| {
-        //         obj.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap()
-        //             == (CKO_PUBLIC_KEY as CK_ATTRIBUTE_TYPE).to_le_bytes().to_vec()
-        //     })
-        //     .expect("No public key found");
-
-        // let meesign_privkey = session
-        //     .ephemeral_objects
-        //     .values()
-        //     .find(|obj| {
-        //         obj.get_attribute(CKA_CLASS as CK_ATTRIBUTE_TYPE).unwrap()
-        //             == (CKO_PRIVATE_KEY as CK_ATTRIBUTE_TYPE)
-        //                 .to_le_bytes()
-        //                 .to_vec()
-        //     })
-        //     .expect("No private key found");
         {
-            // let mut sessions = SESSIONS.write().unwrap();
-            // let session = sessions
-            //     .as_mut()
-            //     .unwrap()
-            //     .get_session_mut(&hSession)
-            //     .unwrap();
-            // let ms_pubkey_handle = session
-            //     .handle_resolver
-            //     .get_or_insert_object_handle(meesign_pubkey_id);
-
-            // let ms_privkey_handle = session
-            //     .handle_resolver
-            //     .get_or_insert_object_handle(meesign_privkey_id);
-            // let mut log = File::create("/home/xroad/logs/handles").unwrap();
-            // log.write_all(format!("updated pub :{:?}", ms_pubkey_handle).as_bytes())
-            //     .unwrap();
-            // log.write_all(format!("updated priv:{:?}", ms_privkey_handle).as_bytes())
-            //     .unwrap();
             let (sk, pk) = match state_accessor.get_keypair(&hSession) {
                 Ok(val) => val,
                 Err(err) => return err.into_ck_rv(),
             };
 
-            // {
-            // let mut sessions = SESSIONS.write().unwrap();
-            // let session = sessions
-            //     .as_mut()
-            //     .unwrap()
-            //     .get_session_mut(&hSession)
-            //     .unwrap();
-
-            // let obj = session.get_object(pk).unwrap().expect("");
-            // let pubex = obj.get_attribute(CKA_PUBLIC_EXPONENT as CK_ATTRIBUTE_TYPE);
-            // let mut log = File::create("/home/xroad/logs/checking-value").unwrap();
-            // log.write_all(format!("CKA_PUBLIC_EXPONENT: {:?}\n", pubex).as_bytes())
-            //     .unwrap();
-
-            // let modul = obj.get_attribute(CKA_MODULUS as CK_ATTRIBUTE_TYPE);
-            // log.write_all(format!("CKA_MODULUS: {:?}\n", modul).as_bytes())
-            //     .unwrap();
-            // let bits = obj.get_attribute(CKA_MODULUS_BITS as CK_ATTRIBUTE_TYPE);
-            // log.write_all(format!("CKA_MODULUS_BITS: {:?}\n", bits).as_bytes())
-            //     .unwrap();
-            // }
             unsafe {
                 *phPublicKey = pk;
                 *phPrivateKey = sk;
             };
         }
-        // let mut log = File::create("/home/xroad/logs/C_GenerateKeyPair-ended").unwrap();
-        // log.write_all(b"").unwrap();
 
         return CKR_OK as CK_RV;
     }
-    return CKR_MECHANISM_INVALID as CK_RV;
 
-    // if mechanism.mechanism != CKM_ECDSA_KEY_PAIR_GEN as CK_MECHANISM_TYPE
-    //     || mechanism.mechanism != CKM_RSA_PKCS as CK_MECHANISM_TYPE
-    // {
-    //     // we are supporting only ECDSA keys that are already generated externally
-    //     return CKR_MECHANISM_INVALID as CK_RV;
-    // }
+    if mechanism.mechanism != CKM_ECDSA_KEY_PAIR_GEN as CK_MECHANISM_TYPE
+        || mechanism.mechanism != CKM_RSA_PKCS as CK_MECHANISM_TYPE
+    {
+        // we are supporting only ECDSA keys that are already generated externally
+        return CKR_MECHANISM_INVALID as CK_RV;
+    }
 
-    //     let state_accessor = StateAccessor::new();
-    //     let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
-    //         Ok(val) => val,
-    //         Err(err) => return err.into_ck_rv(),
-    //     };
+    let state_accessor = StateAccessor::new();
+    let (private_key_handle, pubkey_handle) = match state_accessor.get_keypair(&hSession) {
+        Ok(val) => val,
+        Err(err) => return err.into_ck_rv(),
+    };
 
-    //     unsafe {
-    //         *phPublicKey = pubkey_handle;
-    //         *phPrivateKey = private_key_handle;
-    //     };
+    unsafe {
+        *phPublicKey = pubkey_handle;
+        *phPrivateKey = private_key_handle;
+    };
 
-    //     CKR_OK as CK_RV
+    CKR_OK as CK_RV
 }
 
 /// Wraps (i.e., encrypts) a private or secret key

@@ -112,36 +112,7 @@ impl Session {
     pub fn get_keypair(&self) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
         self.key_pair.unwrap()
     }
-    // pub fn get_keypair_rsa(
-    //     &self,
-    //     pubt: &Template,
-    //     privt: &Template,
-    // ) -> (CK_OBJECT_HANDLE, CK_OBJECT_HANDLE) {
-    //     let pubkey: GroupId = self.token.read().unwrap().get_public_key().into();
-    //     let token_label: String = self.token.read().unwrap().get_label().into();
 
-    //     let mut session = Self {
-    //         hasher: None,
-    //         object_search: None,
-    //         token,
-    //         encryptor: None,
-    //         signer: None,
-    //         object_search_iterator: None,
-    //         key_pair: None,
-    //         cryptoki_repo,
-    //         handle_resolver: HandleResolver::new(),
-    //         ephemeral_objects: HashMap::new(),
-    //     };
-
-    //     pubkey, privkey = Some(session.create_communicator_keypair(
-    //         pubkey,
-    //         token_label,
-    //         &Template::new(),
-    //         &Template::new(),
-    //     ));
-    //     (pubkey, privkey)
-    //     // self.key_pair.unwrap()
-    // }
     pub fn get_hasher(&self) -> Option<Hasher> {
         self.hasher.clone()
     }
@@ -309,7 +280,6 @@ fn get_communicator_common_key_attributes(
             key.n().to_bytes_be()
         }),
         Attribute::from_parts(CKA_VALUE, public_key),
-        // Attribute::from_parts(CKA_ID, key_identifier),
         Attribute::from_parts(
             CKA_ID,
             match template.get_value(&(CKA_ID as CK_ATTRIBUTE_TYPE)) {
@@ -329,30 +299,6 @@ fn get_communicator_public_key_template(
         get_communicator_common_key_attributes(token_label, public_key.clone(), pub_key_template);
     // FIXME add a test
 
-    //  Attribute: 266 (CKA_VERIFY)
-    //  Attribute: 262 (CKA_WRAP)
-    //  Attribute: 260 (CKA_ENCRYPT)
-    //  Attribute: 3 (CKA_LABEL)
-    //  Attribute: 290 (CKA_PUBLIC_EXPONENT)
-    //  Attribute: 258 (CKA_ID)
-    //  Attribute: 289 (CKA_MODULUS_BITS)
-    //  Attribute: 1 (CKA_TOKEN)
-    //  Attribute: 1073743360 (CKA_ALLOWED_MECHANISMS)
-    //  Attribute: 256 (CKA_KEY_TYPE)
-    //  Attribute: 0 (CKA_CLASS)
-    //
-
-    // CKA_VERIFY,
-    // CKA_WRAP,
-    // CKA_ENCRYPT,
-    // CKA_LABEL,
-    // CKA_PUBLIC_EXPONENT,
-    // CKA_ID,
-    // CKA_MODULUS_BITS,
-    // CKA_TOKEN,
-    // CKA_ALLOWED_MECHANISMS,
-    // CKA_KEY_TYPE,
-    // CKA_CLASS,
     let mut template = pub_key_template.clone();
     template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY));
     template.set_value(Attribute::from_parts(CKA_MODULUS, {
@@ -360,44 +306,7 @@ fn get_communicator_public_key_template(
         key.n().to_bytes_be()
     }));
     template.set_value(Attribute::from_parts(CKA_VALUE, public_key));
-    // template.set_value(Attribute::from_parts(
-    //     CKA_SUBJECT,
-    //     "ACME".as_bytes().to_vec(),
-    // ));
     template
-    // let mut file = File::create("/home/xroad/logs/cryptoki.echoes").unwrap();
-    // file.write_all(
-    //     format!(
-    //         "{:?}",
-    //         match template.get_value(&(CKA_PUBLIC_EXPONENT as CK_ATTRIBUTE_TYPE)) {
-    //             Some(value) => value,
-    //             None => "Missing CKA_PUBLIC_EXPONENT".into(),
-    //         }
-    //     )
-    //     .as_bytes(),
-    // )
-    // .unwrap();
-
-    // let mut attributes = pub_key_template.get_attributes().to_vec();
-    // attributes.append(vec![
-    //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
-    //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
-    // ]);
-    // let mut attributes = vec![
-    //     Attribute::from_parts(CKA_CLASS, CKO_PUBLIC_KEY),
-    //     Attribute::from_parts(CKA_KEY_TYPE, CKK_RSA),
-    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
-    //     Attribute::from_parts(CKA_WRAP, CK_FALSE),
-    //     Attribute::from_parts(CKA_VERIFY, CK_TRUE),
-    //     Attribute::from_parts(CKA_ENCRYPT, CK_FALSE),
-    //     Attribute::from_parts(CKA_ALLOWED_MECHANISMS, CKM_RSA_PKCS),
-    //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
-    //     Attribute::from_parts(CKA_MODULUS_BITS, key_size),
-    //     Attribute::from_parts(CKA_PUBLIC_EXPONENT, key.e().to_bytes_be()),
-    // ];
-    // attributes.append(&mut common_attributes);
-
-    // Template::from_vec(attributes)
 }
 
 fn get_communicator_private_key_template(
@@ -411,35 +320,9 @@ fn get_communicator_private_key_template(
         key.n().to_bytes_be()
     }));
     template.set_value(Attribute::from_parts(CKA_VALUE, public_key));
-    // template.set_value(Attribute::from_parts(
-    //     CKA_SUBJECT,
-    //     "ACME".as_bytes().to_vec(),
-    // ));
     template.set_value(Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY));
     template
 
-    // let mut common_attributes =
-    //     get_communicator_common_key_attributes(token_label, public_key, priv_key_template);
-    // let mut attributes = vec![
-    //     Attribute::from_parts(CKA_ALWAYS_AUTHENTICATE, CK_FALSE),
-    //     Attribute::from_parts(CKA_CLASS, CKO_PRIVATE_KEY),
-    //     Attribute::from_parts(CKA_TOKEN, CK_TRUE),
-    //     Attribute::from_parts(CKA_PRIVATE, CK_TRUE),
-    //     Attribute::from_parts(CKA_SENSITIVE, CK_TRUE),
-    //     Attribute::from_parts(CKA_SIGN, CK_TRUE),
-    //     Attribute::from_parts(CKA_UNWRAP, CK_FALSE),
-    //     Attribute::from_parts(CKA_ALLOWED_MECHANISMS, CKM_RSA_PKCS),
-    //     Attribute::from_parts(CKA_DECRYPT, CK_FALSE),
-    //     // {CKA_SUBJECT, subject, sizeof(subject)},
-    //     // {CKA_ID, id, sizeof(id)},
-    //     // {CKA_SENSITIVE, &true, sizeof(true)},
-    //     // {CKA_DECRYPT, &true, sizeof(true)},
-    //     // {CKA_SIGN, &true, sizeof(true)},
-    //     // {CKA_UNWRAP, &true, sizeof(true)}
-    // ];
-    // attributes.append(&mut common_attributes);
-
-    // Template::from_vec(attributes)
 }
 
 #[cfg(test)]

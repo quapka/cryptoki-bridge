@@ -88,14 +88,6 @@ pub unsafe fn C_GetAttributeValue(
     pTemplate: CK_ATTRIBUTE_PTR,
     ulCount: CK_ULONG,
 ) -> CK_RV {
-    // let mut log = File::create("/home/xroad/logs/C_GetAttributeValue").unwrap();
-    // let mut log = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .append(true)
-    //     .open("/home/xroad/logs/C_GetAttributeValue")
-    //     .unwrap();
-    // log.write_all(format!("{}\n", hObject).as_bytes()).unwrap();
 
     if pTemplate.is_null() {
         return CKR_ARGUMENTS_BAD as CK_RV;
@@ -118,29 +110,12 @@ pub unsafe fn C_GetAttributeValue(
         else {
             unsafe { (*pTemplate.offset(i)).ulValueLen = u64::MAX };
             continue;
-            // let mut log = OpenOptions::new()
-            //     .create(true)
-            //     .write(true)
-            //     .append(true)
-            //     .open("/home/xroad/logs/C_GetAttributeValue")
-            //     .unwrap();
-            // log.write_all(format!("{}\n", (attribute.len() as CK_ULONG)).as_bytes())
-            //     .unwrap();
-            // return CKR_ATTRIBUTE_TYPE_INVALID as CK_RV;
         };
 
         if unsafe { (*pTemplate.offset(i)).pValue.is_null() } {
             unsafe { (*pTemplate.offset(i)).ulValueLen = 0 as CK_ULONG }
             continue;
         }
-        // let mut log = OpenOptions::new()
-        //     .create(true)
-        //     .write(true)
-        //     .append(true)
-        //     .open("/home/xroad/logs/C_GetAttributeValue")
-        //     .unwrap();
-        // log.write_all(format!("{}\n", (attribute.len() as CK_ULONG)).as_bytes())
-        //     .unwrap();
         unsafe {
             ptr::copy(
                 attribute.as_ptr(),
