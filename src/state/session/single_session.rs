@@ -302,8 +302,6 @@ fn get_communicator_common_key_attributes(
             match template.get_value(&(CKA_LABEL as CK_ATTRIBUTE_TYPE)) {
                 Some(label) => label,
                 None => token_label.into(),
-                // Attribute::from_parts(CKA_LABEL, token_label),
-                // Attribute::from_parts(CKA_LABEL, vec![0x6D, 0x73]),
             },
         ),
         Attribute::from_parts(CKA_MODULUS, {
@@ -317,8 +315,6 @@ fn get_communicator_common_key_attributes(
             match template.get_value(&(CKA_ID as CK_ATTRIBUTE_TYPE)) {
                 Some(label) => label,
                 None => key_identifier,
-                // Attribute::from_parts(CKA_LABEL, token_label),
-                // Attribute::from_parts(CKA_LABEL, vec![0x6D, 0x73]),
             },
         ),
     ]
