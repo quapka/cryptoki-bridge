@@ -8,7 +8,7 @@ use tonic::{
     transport::{Certificate, Channel, ClientTlsConfig, Uri},
 };
 
-use std::{str::FromStr, time::Duration};
+use std::{cmp, str::FromStr, time::Duration};
 
 use crate::communicator::meesign::proto::{mpc_client::MpcClient, GroupsRequest, KeyType};
 use crate::communicator::AuthResponse;
@@ -19,8 +19,9 @@ use super::{
     Communicator, GroupId, RequestData, TaskId,
 };
 
-static MAX_ATTEMPT_COUNT: usize = 60 * 2 / ATTEMPT_SLEEP_SEC as usize;
-static ATTEMPT_SLEEP_SEC: u64 = 3;
+static MAX_ATTEMPT_COUNT: usize = 60 * 2; // ATTEMPT_SLEEP_SEC as usize;
+static ATTEMPT_SLEEP_MILLIS: u64 = 50;
+// static ATTEMPT_SLEEP_SEC: f64 = cmp::max(ATTEMPT_SLEEP_MILLIS as f64 / 1000.0, 1.0);
 
 /// Communicates with the MeeSign server
 pub(crate) struct Meesign {
@@ -83,7 +84,11 @@ impl Communicator for Meesign {
         &mut self,
         task_id: TaskId,
     ) -> Result<Option<AuthResponse>, CommunicatorError> {
-        for _attempt in 0..MAX_ATTEMPT_COUNT {
+        for _ in 1..1000 {
+            // NOTE: Waiting in the beginning is counterintuitive, but we know that we will likely
+            // wait due to the roundtrips between MeeSign Server and Clients and therefore can
+            // afford to wait and hope that a single wait will be enough.
+            time::sleep(Duration::from_millis(10)).await;
             let request = tonic::Request::new(TaskRequest {
                 task_id: task_id.clone(),
                 device_id: None,
@@ -95,11 +100,10 @@ impl Communicator for Meesign {
             if response.get_ref().state == TaskState::Failed as i32 {
                 return Err(CommunicatorError::TaskFailed);
             }
-            time::sleep(Duration::from_secs(ATTEMPT_SLEEP_SEC)).await;
         }
 
         Err(CommunicatorError::TaskTimedOut(
-            (MAX_ATTEMPT_COUNT as u64) * ATTEMPT_SLEEP_SEC,
+            MAX_ATTEMPT_COUNT as u64, // ((MAX_ATTEMPT_COUNT as f64) * ATTEMPT_SLEEP_SEC).round() as u64,
         ))
     }
 }
