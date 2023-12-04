@@ -369,20 +369,20 @@ fn get_communicator_public_key_template(
         CKA_SUBJECT,
         "ACME".as_bytes().to_vec(),
     ));
-    let mut file = File::create("/home/xroad/logs/cryptoki.echoes").unwrap();
-    file.write_all(
-        format!(
-            "{:?}",
-            match template.get_value(&(CKA_PUBLIC_EXPONENT as CK_ATTRIBUTE_TYPE)) {
-                Some(value) => value,
-                None => "Missing CKA_PUBLIC_EXPONENT".into(),
-            }
-        )
-        .as_bytes(),
-    )
-    .unwrap();
-
     template
+    // let mut file = File::create("/home/xroad/logs/cryptoki.echoes").unwrap();
+    // file.write_all(
+    //     format!(
+    //         "{:?}",
+    //         match template.get_value(&(CKA_PUBLIC_EXPONENT as CK_ATTRIBUTE_TYPE)) {
+    //             Some(value) => value,
+    //             None => "Missing CKA_PUBLIC_EXPONENT".into(),
+    //         }
+    //     )
+    //     .as_bytes(),
+    // )
+    // .unwrap();
+
     // let mut attributes = pub_key_template.get_attributes().to_vec();
     // attributes.append(vec![
     //     Attribute::from_parts(CKA_MODULUS, key.n().to_bytes_be()),
